@@ -1,0 +1,14 @@
+# Sample DRAKON diagram
+node start start "Begin"
+node fetch action "Fetch input"
+node decide question "Is value valid?"
+node fix action "Request correction"
+node process action "Process value"
+node end end "Finish"
+
+edge start -> fetch
+edge fetch -> decide
+edge decide -> process yes
+edge decide -> fix no
+edge fix -> fetch
+edge process -> end

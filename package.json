@@ -1,0 +1,56 @@
+{
+  "name": "drakon-vscode",
+  "displayName": "DRAKON Diagram Viewer",
+  "description": "Render textual .drakon diagrams as interactive flowcharts inside VS Code.",
+  "version": "0.0.1",
+  "publisher": "zalex",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onLanguage:drakon",
+    "onCustomEditor:drakonViewer.drakonEditor"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "drakon",
+        "aliases": [
+          "DRAKON",
+          "drakon"
+        ],
+        "extensions": [
+          ".drakon"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "drakonViewer.drakonEditor",
+        "displayName": "DRAKON Diagram",
+        "selector": [
+          {
+            "filenamePattern": "*.drakon"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "echo \"No tests yet\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.84.0",
+    "typescript": "^5.4.0"
+  }
+}

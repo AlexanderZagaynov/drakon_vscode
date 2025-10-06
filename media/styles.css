@@ -1,0 +1,108 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--vscode-font-family);
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#diagram-container {
+  flex: 1;
+  overflow: auto;
+  background: var(--vscode-editor-background);
+}
+
+#diagram {
+  min-height: 100%;
+  min-width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#diagram svg {
+  background: var(--vscode-editorCodeLens-foreground, transparent);
+  border-radius: 8px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+  max-width: 100%;
+}
+
+.node-shape {
+  stroke: var(--vscode-editor-foreground);
+  stroke-width: 2;
+  fill: var(--vscode-editor-background);
+}
+
+.node-shape.question {
+  fill: #fff4ce;
+}
+
+.node-shape.start,
+.node-shape.end {
+  fill: #e2f3e3;
+}
+
+.node-label {
+  font-size: 14px;
+  fill: var(--vscode-editor-foreground);
+  pointer-events: none;
+}
+
+.edge {
+  stroke: var(--vscode-editor-foreground);
+  stroke-width: 2;
+  fill: none;
+}
+
+.edge-head {
+  fill: var(--vscode-editor-foreground);
+}
+
+.edge-label {
+  font-size: 12px;
+  fill: var(--vscode-textPreformat-foreground, var(--vscode-editor-foreground));
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+#errors {
+  padding: 12px 20px;
+  border-top: 1px solid var(--vscode-editorGroup-border, transparent);
+}
+
+#errors.hidden {
+  display: none;
+}
+
+.error-title {
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.error-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.error-list li {
+  margin-bottom: 4px;
+}
+
+.empty-state {
+  margin: 0;
+  font-style: italic;
+  opacity: 0.7;
+}
