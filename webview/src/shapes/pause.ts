@@ -1,6 +1,13 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 function drawPauseShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   drawRoundedRectangle(group, width, height, node);
@@ -22,10 +29,10 @@ function drawPauseShape(group: NodeSelection, width: number, height: number, nod
 }
 
 export const pauseSpec: NodeSpec = {
-  width: 240,
-  minHeight: 160,
-  lineHeight: 22,
-  textPaddingTop: 32,
-  textPaddingBottom: 32,
+  width: BASE_NODE_WIDTH,
+  minHeight: BASE_NODE_MIN_HEIGHT * (16 / 17),
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (8 / 7),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (8 / 7),
   draw: drawPauseShape
 };

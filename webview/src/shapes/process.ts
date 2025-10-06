@@ -1,6 +1,13 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 function drawProcessShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   drawRoundedRectangle(group, width, height, node);
@@ -18,10 +25,10 @@ function drawProcessShape(group: NodeSelection, width: number, height: number, n
 }
 
 export const processSpec: NodeSpec = {
-  width: 260,
-  minHeight: 260,
-  lineHeight: 24,
-  textPaddingTop: 72,
-  textPaddingBottom: 36,
+  width: BASE_NODE_WIDTH * (13 / 12),
+  minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
+  lineHeight: BASE_LINE_HEIGHT * (12 / 11),
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (18 / 7),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (9 / 7),
   draw: drawProcessShape
 };

@@ -1,11 +1,18 @@
 import type { NodeSpec } from '../types.js';
 import { drawStadium } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 export const groupDurationSpec: NodeSpec = {
-  width: 120,
-  minHeight: 260,
-  lineHeight: 22,
-  textPaddingTop: 36,
-  textPaddingBottom: 36,
+  width: BASE_NODE_WIDTH / 2,
+  minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (9 / 7),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (9 / 7),
   draw: drawStadium
 };

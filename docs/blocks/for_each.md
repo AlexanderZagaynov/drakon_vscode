@@ -69,32 +69,28 @@ drakon "order_lines_exit" {
       item       = "line"
       index      = "idx"
       collection = "order.lines"
-      until      = "all_done"
+      until      = "end"
     }
 
     action "review" {
       text = "Review line ${idx}"
     }
-
-    end "all_done" {
-      text = "All lines reviewed"
-    }
   }
-}
 
-line {
-  from  = "each_line"
-  to    = "review"
-  kind  = "loop"
-  label = "Next line"
-}
+  line {
+    from  = "each_line"
+    to    = "review"
+    kind  = "loop"
+    label = "Next line"
+  }
 
-line {
-  from  = "each_line"
-  to    = "all_done"
-  kind  = "loop"
-  label = "Done"
-  handle = "south"
+  line {
+    from   = "each_line"
+    to     = "end"
+    kind   = "loop"
+    label  = "Done"
+    handle = "south"
+  }
 }
 ```
 

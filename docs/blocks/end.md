@@ -1,72 +1,25 @@
-# End Block
+# End Terminator
 
 ## Summary
 
-- Terminates a control path in the diagram.
-- Visualized as the rounded “End” terminator icon in DRAKON.
-- Multiple end blocks may exist to represent alternative exit conditions.
+- The main liana always finishes with an implicit “End” terminator; the DSL no longer allows an `end` block.
+- The renderer synthesises the closing node and assigns a predictable anchor such as `<diagram-id>@end`.
+- When multiple lanes converge, the implicit node sits at the end of the primary lane and automatic sequential edges keep the flow continuous.
+- Authors may still reference `end` (or the generated anchor) in `line` blocks when they need to wire explicit jumps to the terminator.
 
-## Syntax
+## Behaviour
 
-```hcl
-end "<block-id>" {
-  text   = "<label>"
-  tags   = ["tag1", "tag2"]
-  anchor = "<anchor-name>"
-  data = {
-    key = "value"
-  }
+```text
+drakon "process" {
+  action "Do work"
 }
 ```
 
-## Attributes
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `text` | ✖ | Custom caption for the terminator (default: localized “End”). |
-| `tags` | ✖ | Freeform labels for classification. |
-| `anchor` | ✖ | Explicit anchor name (defaults to `<block-id>`). |
-| `data` | ✖ | Arbitrary metadata for downstream tooling. |
-
-## Variants
-
-### Variant A — Standard End
-
-```hcl
-drakon "ticket_flow" {
-  lane "support" {
-    end "done" {
-      text = "Resolved"
-    }
-  }
-}
-```
-
-### Variant B — Multiple Ends in Different Lanes
-
-```hcl
-drakon "ticket_flow_multi" {
-  lane "agent" {
-    title = "Support Agent"
-    end "closed" {
-      text = "Closed"
-    }
-  }
-
-  lane "customer" {
-    title = "Customer"
-    end "cancelled" {
-      text = "Cancelled by customer"
-    }
-  }
-}
-```
+- Renders as `Start → action "Do work" → End`.
+- Other lanes must connect via explicit lines when they need to reach the terminator.
 
 ## Implementation Notes
 
-- Ensure lines entering the end block terminate cleanly; no outgoing connectors should be permitted.
-- Use `tags` or `data` to track exit semantics (e.g., success vs. failure) so reporting tools can distinguish them.
-
-## Future Considerations
-
-- Support optional colour tokens to differentiate end reasons visually.
+- Reject explicit `end` blocks in the parser so metadata stays consistent.
+- Auto-generate the end node on the primary lane and retain the stable `<diagram-id>@end` anchor.
+- When no explicit line targets the terminator, rely on the sequential edge between the last primary-lane node and the implicit end to keep the main liana continuous.

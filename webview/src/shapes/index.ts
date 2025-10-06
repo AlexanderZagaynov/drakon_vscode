@@ -56,32 +56,43 @@ export function getNodeSpec(type: string): NodeSpec {
 
 export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>, node: DiagramNode): void {
   const geometry = node.geometry as NodeGeometry;
-  const { width, height, spec, lines, lineHeight, textYOffset, paddingTop } = geometry;
+  const { width, height, spec, lines, lineHeight, textYOffset, paddingTop, paddingLeft, paddingRight } = geometry;
   const draw = spec.draw ?? defaultSpec.draw;
   draw(group, width, height, node);
 
   const labelLines = node.label ? node.label.split(/\r?\n/) : [''];
+  const baselineMode = spec.textBaseline ?? 'center';
+  const alignMode = spec.textAlign ?? 'center';
+  const anchor = alignMode === 'left' ? 'start' : alignMode === 'right' ? 'end' : 'middle';
+  let baseX = 0;
+  if (alignMode === 'left') {
+    baseX = -width / 2 + paddingLeft;
+  } else if (alignMode === 'right') {
+    baseX = width / 2 - paddingRight;
+  }
   const text = group
     .append('text')
     .attr('class', 'node-label')
-    .attr('text-anchor', 'middle');
+    .attr('text-anchor', anchor);
 
-  const baselineMode = spec.textBaseline ?? 'center';
-  let startY: number;
   if (baselineMode === 'top') {
-    const topOffset = -height / 2 + paddingTop;
-    startY = topOffset + lineHeight / 2;
+    text.attr('dominant-baseline', 'text-before-edge').attr('y', -height / 2 + paddingTop).attr('x', baseX);
+    labelLines.forEach((line, index) => {
+      text
+        .append('tspan')
+        .attr('x', baseX)
+        .attr('dy', index === 0 ? 0 : lineHeight)
+        .text(line);
+    });
   } else {
-    startY = textYOffset - ((lines - 1) / 2) * lineHeight;
+    const initialDy = -((lines - 1) / 2) * lineHeight;
+    text.attr('dominant-baseline', 'middle').attr('y', textYOffset).attr('x', baseX);
+    labelLines.forEach((line, index) => {
+      text
+        .append('tspan')
+        .attr('x', baseX)
+        .attr('dy', index === 0 ? initialDy : lineHeight)
+        .text(line);
+    });
   }
-
-  let currentY = startY;
-  labelLines.forEach((line) => {
-    text
-      .append('tspan')
-      .attr('x', 0)
-      .attr('y', currentY)
-      .text(line);
-    currentY += lineHeight;
-  });
 }

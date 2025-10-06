@@ -1,0 +1,8 @@
+drakon "Parameters Example"
+{
+  parameters = <<-TEXT
+    random parameters text
+    param1 = "value1"
+    param2 = "value2"
+  TEXT
+}

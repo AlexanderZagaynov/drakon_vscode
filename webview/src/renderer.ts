@@ -76,27 +76,54 @@ function drawDiagram(
 
   const laneGroup = svg.append('g').attr('class', 'lanes');
 
+  const lanesForBackground = layout.lanes.filter((lane) => lane.innerTop !== undefined && lane.innerBottom !== undefined);
+
   laneGroup
     .selectAll('rect')
-    .data(layout.lanes)
+    .data(lanesForBackground)
     .enter()
     .append('rect')
     .attr('class', 'lane-background')
     .attr('x', (d) => d.x - d.width / 2)
-    .attr('y', LAYOUT.laneTopMargin / 2)
+    .attr('y', (d) => {
+      const padding = 40;
+      const rawTop = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding;
+      return Math.max(LAYOUT.laneTopMargin / 2, rawTop);
+    })
     .attr('width', (d) => d.width)
-    .attr('height', layout.height - LAYOUT.laneTopMargin)
+    .attr('height', (d) => {
+      const padding = 40;
+      const rawTop = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding;
+      const top = Math.max(LAYOUT.laneTopMargin / 2, rawTop);
+      const rawBottom = (d.innerBottom ?? (LAYOUT.laneTopMargin / 2 + 160)) + padding;
+      const height = rawBottom - top;
+      return Math.max(120, height);
+    })
     .attr('rx', 18)
     .attr('ry', 18);
 
+  const visibleLaneTitles = layout.lanes.filter((lane) => {
+    if (lane.innerTop === undefined || lane.innerBottom === undefined) {
+      return false;
+    }
+    if (lane.implicit && (lane.id === 'main' || !lane.title || lane.title === lane.id)) {
+      return false;
+    }
+    return true;
+  });
+
   laneGroup
     .selectAll('text')
-    .data(layout.lanes)
+    .data(visibleLaneTitles)
     .enter()
     .append('text')
     .attr('class', 'lane-title')
     .attr('x', (d) => d.x)
-    .attr('y', LAYOUT.laneTopMargin / 2 - 26)
+    .attr('y', (d) => {
+      const padding = 40;
+      const candidate = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding - 16;
+      return Math.max(LAYOUT.laneTopMargin / 2 - 26, candidate);
+    })
     .text((d) => d.title ?? d.id);
 
   const visibleEdges = diagram.edges.filter(

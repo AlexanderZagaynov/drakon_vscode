@@ -1,5 +1,12 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 function drawDurationShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   const radius = height / 2;
@@ -16,10 +23,10 @@ function drawDurationShape(group: NodeSelection, width: number, height: number, 
 }
 
 export const durationSpec: NodeSpec = {
-  width: 240,
-  minHeight: 140,
-  lineHeight: 22,
-  textPaddingTop: 26,
-  textPaddingBottom: 26,
+  width: BASE_NODE_WIDTH,
+  minHeight: BASE_NODE_MIN_HEIGHT * (14 / 17),
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (13 / 14),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (13 / 14),
   draw: drawDurationShape
 };

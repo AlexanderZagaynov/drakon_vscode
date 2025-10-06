@@ -1,0 +1,9 @@
+drakon "Action Example"
+{
+  action "action_1" {
+    text = <<-TEXT
+      random action text
+      int x = 0;
+    TEXT
+  }
+}

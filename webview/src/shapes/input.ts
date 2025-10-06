@@ -1,5 +1,12 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 export function drawInputShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   const bevel = Math.min(width * 0.15, 40);
@@ -17,10 +24,10 @@ export function drawInputShape(group: NodeSelection, width: number, height: numb
 }
 
 export const inputSpec: NodeSpec = {
-  width: 280,
-  minHeight: 180,
-  lineHeight: 22,
-  textPaddingTop: 32,
-  textPaddingBottom: 32,
+  width: BASE_NODE_WIDTH * (7 / 6),
+  minHeight: BASE_NODE_MIN_HEIGHT * (18 / 17),
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (8 / 7),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (8 / 7),
   draw: drawInputShape
 };

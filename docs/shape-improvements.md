@@ -3,6 +3,11 @@
 ## Overview
 Updated the shapes rendering to better match the official DRAKON visual specifications based on the prototype images in `docs/shape_prototypes/`.
 
+### Implicit Start/End Terminators
+- Diagrams now synthesize start and end nodes automatically when they are not declared explicitly.
+- Explicit `start` / `end` blocks are still supported for custom captions, ids, or metadata.
+- The renderer wires the generated nodes into the main liana so every lane still begins with Start and ends with End.
+
 ## Changes Made
 
 ### 1. Start/End Shape (Stadium Shape)

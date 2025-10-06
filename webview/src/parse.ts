@@ -1,5 +1,34 @@
 import type { Token, TokenType, Statement, AttributeStatement, BlockStatement } from './types.js';
 
+function normalizeHeredoc(value: string): string {
+  const normalized = value.replace(/\r/g, '');
+  let lines = normalized.split('\n');
+  while (lines.length && lines[0]?.trim() === '') {
+    lines.shift();
+  }
+  while (lines.length && lines[lines.length - 1]?.trim() === '') {
+    lines.pop();
+  }
+  if (!lines.length) {
+    return '';
+  }
+  const indent = lines.reduce<number>(
+    (acc, line) => {
+      if (!line.trim()) {
+        return acc;
+      }
+      const match = line.match(/^(\s*)/);
+      const leading = match ? match[0].length : 0;
+      return acc === -1 ? leading : Math.min(acc, leading);
+    },
+    -1
+  );
+  if (indent > 0) {
+    lines = lines.map((line) => line.slice(Math.min(indent, line.length)));
+  }
+  return lines.join('\n');
+}
+
 export function tokenize(input: string, errors: string[]): Token[] {
   const tokens: Token[] = [];
   let index = 0;
@@ -46,6 +75,67 @@ export function tokenize(input: string, errors: string[]): Token[] {
 
     const startLine = line;
     const startColumn = column;
+
+    if (char === '<' && input[index + 1] === '<') {
+      advance(2);
+      let stripIndent = false;
+      if (input[index] === '-' || input[index] === '~') {
+        stripIndent = true;
+        advance();
+      }
+      let terminator = '';
+      while (index < input.length) {
+        const markerChar = input[index] ?? '';
+        if (/[\w.-]/.test(markerChar)) {
+          terminator += markerChar;
+          advance();
+          continue;
+        }
+        break;
+      }
+      if (!terminator) {
+        errors.push(`Heredoc marker is missing after << at line ${startLine}.`);
+      }
+      while (index < input.length && input[index] !== '\n') {
+        if (!/\s/.test(input[index] ?? '')) {
+          errors.push(`Unexpected character "${input[index]}" in heredoc marker at line ${line}.`);
+        }
+        advance();
+      }
+      if (index < input.length && input[index] === '\n') {
+        advance();
+      }
+      const lines: string[] = [];
+      let terminated = false;
+      while (index < input.length) {
+        let currentLine = '';
+        while (index < input.length && input[index] !== '\n') {
+          currentLine += input[index] ?? '';
+          advance();
+        }
+        const checkValue = stripIndent ? currentLine.trim() : currentLine;
+        if (checkValue === terminator) {
+          terminated = true;
+          if (index < input.length && input[index] === '\n') {
+            advance();
+          }
+          break;
+        }
+        lines.push(currentLine);
+        if (index < input.length && input[index] === '\n') {
+          advance();
+        }
+      }
+      if (!terminated) {
+        errors.push(`Unterminated heredoc starting at line ${startLine}.`);
+      }
+      let value = lines.join('\n');
+      if (stripIndent) {
+        value = normalizeHeredoc(value);
+      }
+      addToken('string', value, startLine, startColumn);
+      continue;
+    }
 
     if (char === '"' || char === "'") {
       const quote = char;

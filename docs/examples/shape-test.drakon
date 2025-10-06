@@ -1,20 +1,17 @@
 drakon "shape_test" {
   title = "DRAKON Shape Test"
 
+  parameters = {
+    id   = "params"
+    text = "Parameters Block"
+    inputs = {
+      x = "int x"
+      y = "int y"
+    }
+  }
+
   lane "shapes" {
     title = "All Shape Types"
-
-    start "begin" {
-      text = "Start"
-    }
-
-    parameters "params" {
-      text = "Parameters Block"
-      inputs = {
-        x = "int x"
-        y = "int y"
-      }
-    }
 
     action "action_1" {
       text = "Action Block\nwith multiple lines"
@@ -108,14 +105,10 @@ drakon "shape_test" {
       text = "Timer Block"
       timeout = "PT10S"
     }
-
-    end "finish" {
-      text = "End"
-    }
   }
 
   line {
-    from = "begin"
+    from = "start"
     to = "params"
   }
 
@@ -223,6 +216,6 @@ drakon "shape_test" {
 
   line {
     from = "timer_1"
-    to = "finish"
+    to = "end"
   }
 }

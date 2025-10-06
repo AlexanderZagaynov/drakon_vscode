@@ -1,6 +1,13 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 function drawShelfShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   drawRoundedRectangle(group, width, height, node);
@@ -30,10 +37,10 @@ function drawShelfShape(group: NodeSelection, width: number, height: number, nod
 }
 
 export const shelfSpec: NodeSpec = {
-  width: 320,
-  minHeight: 190,
-  lineHeight: 22,
-  textPaddingTop: 42,
-  textPaddingBottom: 28,
+  width: BASE_NODE_WIDTH * (4 / 3),
+  minHeight: BASE_NODE_MIN_HEIGHT * (19 / 17),
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP * (3 / 2),
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM,
   draw: drawShelfShape
 };

@@ -102,7 +102,7 @@ Each keyword aligns with one icon from the reference. Detailed guidance, variant
 
 ### Keyword-Specific Clauses
 
-- `parameters`: add `inputs = { name = "type", ... }`.
+- `parameters`: define the formal inputs inside the root `drakon` block using the `parameters` attribute (string, list, or object).
 - `question`: add `yes = { target = "...", label = "...", handle = "south" }` and `no = { ... }`.
 - `choice`: add repeated `case { label = "..."; target = "..."; handle = "east" }` blocks plus optional `else = { target = "..." }`.
 - `insertion`: add `target = "library/snippet"` and optional `inputs = { key = "value" }`, `outputs = { name = "description" }`.
@@ -159,80 +159,64 @@ line {
 drakon "order_flow" {
   title = "Order Processing"
 
-  lane "system" {
-    title = "System"
-
-    start "start" {}
-
-    parameters "inputs" {
-      inputs = {
-        order_id    = "Guid"
-        customer_id = "Guid"
-      }
-    }
-
-    action "fetch" {
-      lines = [
-        "Fetch order",
-        "and payment data",
-      ]
-    }
-
-    question "paid?" {
-      text = "Payment received?"
-      yes = {
-        target = "prepare"
-        label  = "Yes"
-        handle = "south"
-      }
-      no = {
-        target = "request-payment"
-        label  = "No"
-        handle = "east"
-      }
-    }
-
-    for_each "review_lines" {
-      item       = "line"
-      collection = "order.lines"
-    }
-
-    parallel "fulfillment" {
-      threads = ["packing", "shipping"]
-    }
-
-    action "prepare" {
-      text = "Pack goods"
-    }
-
-    action "ship" {
-      text = "Ship parcel"
-    }
-
-    end "done" {}
+  parameters = {
+    text = "Order Inputs"
+    lines = [
+      "order_id    = Guid",
+      "customer_id = Guid"
+    ]
   }
 
-  lane "customer" {
-    title = "Customer"
+  action "fetch" {
+    lines = [
+      "Fetch order",
+      "and payment data",
+    ]
+  }
 
-    simple_output "request-payment" {
-      actor   = "Customer"
-      message = "Please complete your payment"
+  question "paid?" {
+    text = "Payment received?"
+    yes = {
+      target = "prepare"
+      label  = "Yes"
+      handle = "south"
     }
+    no = {
+      target = "request-payment"
+      label  = "No"
+      handle = "east"
+    }
+  }
 
-    output "receipt" {
-      actor   = "Customer"
-      message = "Shipment notification"
-    }
+  for_each "review_lines" {
+    item       = "line"
+    collection = "order.lines"
+  }
+
+  simple_output "request-payment" {
+    actor   = "Customer"
+    message = "Please complete your payment"
+  }
+
+  action "prepare" {
+    text = "Pack goods"
+  }
+
+  parallel "fulfillment" {
+    threads = ["packing", "shipping"]
+  }
+
+  action "ship" {
+    text = "Ship parcel"
+  }
+
+  output "receipt" {
+    actor   = "Customer"
+    message = "Shipment notification"
   }
 
   line {
     from = "start"
-    to   = "inputs"
-  }
-
-  line {
-    from = "inputs"
     to   = "fetch"
   }
 
@@ -281,16 +265,15 @@ drakon "order_flow" {
 
   line {
     from = "receipt"
-    to   = "done"
+    to   = "end"
   }
 }
 ```
 
-This sample demonstrates the interaction between blocks, lanes, branch kinds, and an attachment-free timeline. Durations, timers, and group durations would be added through `attach` statements when required (for example, to express “Timeout after PT2H on request-payment”).
+This sample demonstrates how the textual DSL maps to the canonical DRAKON icons without relying on explicit lane declarations. Durations, timers, and group durations would be added through `attach` statements when required (for example, to express “Timeout after PT2H on request-payment”).
 
 ## Implementation Considerations
 
 - **Parsing:** The syntax is valid HCL. You can parse diagrams with any HCL 2 parser (e.g., HashiCorp’s Go library) and then project the resulting object model onto the existing DRAKON AST. Each block translates to a nested object keyed by its type and id, while repeated blocks (e.g., `case`, `line`, `attach`) arrive as arrays.
-- **Backwards compatibility:** Legacy `.drakon` files that use the `node` / `edge` DSL should be upgraded through a converter. Because the new spec is declarative, the converter can map each `node` into the corresponding block and emit the structured attributes.
 - **Renderer updates:** Icons should read values from the new attribute names (`text`, `lines`, `tags`, `yes.target`, etc.). Branch styling relies on `line.kind`, so preserve existing colour/shape rules by matching the string values described above.
 - **Tooling:** LSP/linting integrations now benefit from HCL’s mature ecosystem (formatters, validators). Consider wiring `hclfmt` or similar as a formatting command inside the extension.

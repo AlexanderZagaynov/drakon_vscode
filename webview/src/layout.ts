@@ -14,7 +14,7 @@ export const LAYOUT: LayoutConfig = {
   laneGap: 140,
   lanePadding: 80,
   laneTopMargin: 140,
-  laneBottomMargin: 120,
+  laneBottomMargin: 140,
   laneLeftMargin: 160,
   laneSpacing: 90
 };
@@ -26,6 +26,8 @@ export function prepareNodes(diagram: Diagram): void {
     const lineHeight = spec.lineHeight ?? 22;
     const paddingTop = spec.textPaddingTop ?? 28;
     const paddingBottom = spec.textPaddingBottom ?? 28;
+    const paddingLeft = spec.textPaddingLeft ?? 28;
+    const paddingRight = spec.textPaddingRight ?? 28;
     const width = spec.width ?? spec.baseWidth ?? 240;
     const minHeight = spec.minHeight ?? (spec.width ?? 170);
     const dynamicHeight = spec.dynamicHeight !== false;
@@ -38,7 +40,9 @@ export function prepareNodes(diagram: Diagram): void {
       textYOffset: spec.textYOffset ?? 0,
       spec,
       paddingTop,
-      paddingBottom
+      paddingBottom,
+      paddingLeft,
+      paddingRight
     };
     node.geometry = geometry;
   });
@@ -51,8 +55,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   const laneLeft = LAYOUT.laneLeftMargin;
 
   const lanes = diagram.lanes.length
-    ? diagram.lanes.map((lane) => ({ id: lane.id, title: lane.title ?? lane.id }))
-    : [{ id: 'main', title: 'Main' }];
+    ? diagram.lanes.map((lane) => ({ id: lane.id, title: lane.title ?? lane.id, implicit: lane.implicit }))
+    : [{ id: 'main', title: 'Main', implicit: true }];
 
   const laneNodesMap = new Map<string, LaneNodeEntry[]>(
     lanes.map((lane) => [lane.id, [] as LaneNodeEntry[]])
@@ -60,7 +64,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   diagram.nodes.forEach((node, index) => {
     if (!laneNodesMap.has(node.lane)) {
-      lanes.push({ id: node.lane, title: node.lane });
+      lanes.push({ id: node.lane, title: node.lane, implicit: false });
       laneNodesMap.set(node.lane, []);
     }
     const entry: LaneNodeEntry = { node, order: index };
@@ -88,7 +92,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     const maxNodeWidth = nodes.reduce((acc, entry) => Math.max(acc, entry.node.geometry?.width ?? 220), 220);
     const laneWidth = Math.max(maxNodeWidth + LAYOUT.lanePadding, 260);
     const centerX = currentX + laneWidth / 2;
-    laneLayouts.push({ id: lane.id, title: lane.title, x: centerX, width: laneWidth, nodes });
+    laneLayouts.push({ id: lane.id, title: lane.title, x: centerX, width: laneWidth, nodes, implicit: lane.implicit });
     currentX += laneWidth + laneGap;
   });
 
@@ -96,11 +100,14 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   laneLayouts.forEach((lane) => {
     let currentY = laneTop;
-    lane.nodes.forEach(({ node }) => {
+    lane.nodes.forEach(({ node }, index) => {
       const height = node.geometry?.height ?? 170;
       const y = currentY + height / 2;
       positions.set(node.id, { x: lane.x, y });
-      currentY += height + laneSpacing;
+      currentY += height;
+      if (index < lane.nodes.length - 1) {
+        currentY += laneSpacing;
+      }
     });
     lane.totalHeight = currentY;
     requiredHeight = Math.max(requiredHeight, currentY);
@@ -110,9 +117,35 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   const totalHeight = Math.max(requiredHeight + LAYOUT.laneBottomMargin, 600);
 
   diagram.edges.forEach((edge) => {
-    edge.fromBase = baseAnchor(edge.from);
-    edge.toBase = baseAnchor(edge.to);
+    edge.fromBase = edge.fromBase ?? baseAnchor(edge.from);
+    edge.toBase = edge.toBase ?? baseAnchor(edge.to);
   });
+
+  laneLayouts.forEach((lane) => {
+    const contentNodes = lane.nodes.filter(
+      (entry) => entry.node.type !== 'start' && entry.node.type !== 'end' && entry.node.type !== 'parameters'
+    );
+    if (contentNodes.length) {
+      const firstNode = contentNodes[0].node;
+      const lastNode = contentNodes[contentNodes.length - 1].node;
+      const firstPos = positions.get(firstNode.id);
+      const lastPos = positions.get(lastNode.id);
+      if (firstPos && lastPos) {
+        lane.innerTop = firstPos.y - (firstNode.geometry?.height ?? 0) / 2;
+        lane.innerBottom = lastPos.y + (lastNode.geometry?.height ?? 0) / 2;
+      }
+    }
+  });
+
+  const startNode = diagram.nodes.find((node) => node.type === 'start');
+  const parametersNode = diagram.nodes.find((node) => node.type === 'parameters');
+  if (startNode && parametersNode) {
+    const startPos = positions.get(startNode.id);
+    const paramPos = positions.get(parametersNode.id);
+    if (startPos && paramPos) {
+      positions.set(parametersNode.id, { x: paramPos.x, y: startPos.y });
+    }
+  }
 
   return { width: totalWidth, height: totalHeight, lanes: laneLayouts, positions };
 }
@@ -128,8 +161,8 @@ function computeDepths(diagram: Diagram): Map<string, number> {
   });
 
   diagram.edges.forEach((edge) => {
-    const from = baseAnchor(edge.from);
-    const to = baseAnchor(edge.to);
+    const from = edge.fromBase ?? baseAnchor(edge.from);
+    const to = edge.toBase ?? baseAnchor(edge.to);
     if (!adjacency.has(from) || !adjacency.has(to)) {
       return;
     }

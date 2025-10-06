@@ -1,16 +1,18 @@
 drakon "quicksort" {
   title = "QuickSort"
+  parameters = {
+    id = "signature"
+    text = <<-TEXT
+      public
+      struct ObjectArray* collection // The array to sort.
+      int begin // The first element of the range to sort.
+      int end // The element which is right after the last element.
+      ObjectComparer compare // The comparison function.
+    TEXT
+  }
 
   lane "header" {
     title = "QuickSort"
-
-    start "start" {
-      text = "QuickSort"
-    }
-
-    parameters "signature" {
-      text = "public\nstruct ObjectArray* collection // The array to sort.\nint begin // The first element of the range to sort.\nint end // The element which is right after the last element.\nObjectComparer compare // The comparison function."
-    }
   }
 
   lane "analyze" {
@@ -20,7 +22,7 @@ drakon "quicksort" {
       text = "Analyze input"
     }
 
-    parameters "state_vars" {
+    action "state_vars" {
       text = "int i;\nint pivotIndex;\nint storeIndex;"
     }
 
@@ -140,10 +142,6 @@ drakon "quicksort" {
 
     insertion "exit_entry" {
       text = "exit"
-    }
-
-    end "end" {
-      text = "End"
     }
   }
 

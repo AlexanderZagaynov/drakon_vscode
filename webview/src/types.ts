@@ -75,6 +75,7 @@ export interface Lane {
   tags: string[];
   nodes: DiagramNode[];
   raw: BlockStatement;
+  implicit: boolean;
 }
 
 export interface Diagram {
@@ -99,12 +100,15 @@ export interface NodeSpec {
   minHeight?: number;
   textPaddingTop?: number;
   textPaddingBottom?: number;
+  textPaddingLeft?: number;
+  textPaddingRight?: number;
   lineHeight?: number;
   draw: DrawFunction;
   textBaseline?: 'top' | 'center';
   textYOffset?: number;
   baseWidth?: number;
   dynamicHeight?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface NodeGeometry {
@@ -116,6 +120,8 @@ export interface NodeGeometry {
   spec: NodeSpec;
   paddingTop: number;
   paddingBottom: number;
+  paddingLeft: number;
+  paddingRight: number;
 }
 
 export interface LayoutConfig {
@@ -137,8 +143,11 @@ export interface LaneLayout {
   title: string;
   x: number;
   width: number;
+  implicit: boolean;
   nodes: LaneNodeEntry[];
   totalHeight?: number;
+  innerTop?: number;
+  innerBottom?: number;
 }
 
 export interface Point {

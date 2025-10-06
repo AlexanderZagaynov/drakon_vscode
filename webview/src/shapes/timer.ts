@@ -1,5 +1,12 @@
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
+import {
+  BASE_NODE_WIDTH,
+  BASE_NODE_MIN_HEIGHT,
+  BASE_LINE_HEIGHT,
+  BASE_TEXT_PADDING_TOP,
+  BASE_TEXT_PADDING_BOTTOM
+} from './constants.js';
 
 function drawTimerShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   const waist = Math.min(width * 0.32, 70);
@@ -18,10 +25,10 @@ function drawTimerShape(group: NodeSelection, width: number, height: number, nod
 }
 
 export const timerSpec: NodeSpec = {
-  width: 260,
-  minHeight: 260,
-  lineHeight: 24,
-  textPaddingTop: 140,
-  textPaddingBottom: 36,
+  width: BASE_NODE_WIDTH * (13 / 12),
+  minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
+  lineHeight: BASE_LINE_HEIGHT * (12 / 11),
+  textPaddingTop: BASE_TEXT_PADDING_TOP * 5,
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (9 / 7),
   draw: drawTimerShape
 };

@@ -12,17 +12,16 @@ if (!(diagramEl instanceof HTMLElement) || !(errorsEl instanceof HTMLElement)) {
   throw new Error('Webview container elements were not found.');
 }
 
+const diagramContainer = diagramEl as HTMLElement;
+const errorsContainer = errorsEl as HTMLElement;
+
 const triggerExport = (format: 'svg' | 'png' | 'webp') => {
-  const target = diagramEl;
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-  exportDiagram(format, target, vscode).catch((error) => {
+  exportDiagram(format, diagramContainer, vscode).catch((error) => {
     console.error(`Failed to export diagram as ${format}:`, error);
   });
 };
 
-function attachExportHandlers(): void {
+function attachToolbarHandlers(): void {
   if (exportSvgButton instanceof HTMLButtonElement) {
     exportSvgButton.addEventListener('click', () => triggerExport('svg'));
   }
@@ -39,7 +38,7 @@ type IncomingMessage = { type?: string; text?: string; format?: string };
 window.addEventListener('message', (event: MessageEvent<IncomingMessage>) => {
   const message = event.data;
   if (message?.type === 'update') {
-    renderDocument(message.text ?? '', diagramEl, errorsEl);
+    renderDocument(message.text ?? '', diagramContainer, errorsContainer);
   } else if (message?.type === 'exportCommand') {
     const format = message.format as 'svg' | 'png' | 'webp' | undefined;
     if (format) {
@@ -49,4 +48,4 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage>) => {
 });
 
 vscode.postMessage({ type: 'ready' });
-attachExportHandlers();
+attachToolbarHandlers();
