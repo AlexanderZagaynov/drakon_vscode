@@ -10,29 +10,27 @@ Render plain-text `.drakon` diagrams as interactive visuals inside VS Code.
 
 ## Text DSL
 
-Each line in a `.drakon` file can describe a node or an edge:
+We are drafting a rich text DSL that mirrors the official DRAKON icon set (Action, Question, Choice, Duration, Timer, etc.). The full proposal, including grammar, block keywords, connector options, and an end-to-end example, lives in [`docs/dsl-spec.md`](docs/dsl-spec.md).
 
-```text
-# Comments start with '#'
-node start start "Begin"
-node s1 action "Gather input"
-node d1 question "Is data valid?"
-node s2 action "Process data"
-node end end "Finish"
+> The current TypeScript renderer still understands only the legacy `node` / `edge` syntax. The HCL-compatible DSL in this repository is the target format; extending the parser to consume it (or providing a converter) is the next implementation phase.
 
-edge start -> s1
-edge s1 -> d1
-edge d1 -> s2 yes
-edge d1 -> end no
-edge s2 -> end
-```
+### Block Reference
 
-- `node <id> <type> "<label>"` registers a node.
-  - Supported types: `start`, `action`, `question`, `end`.
-  - Use `\n` inside the quoted label to insert line breaks.
-- `edge <from> -> <to> [label]` connects two nodes. The optional label is useful for yes/no answers from questions.
+Every icon has a dedicated reference document with exhaustive variants and DSL examples under [`docs/blocks`](docs/blocks). For instance, [`docs/blocks/question.md`](docs/blocks/question.md) shows how to swap the Yes/No connector orientation.
 
-Invalid statements are surfaced in the Problems section at the bottom of the viewer.
+> Embed diagrams in Markdown with fenced code blocks like:
+>
+> ````
+> ```drakon
+> drakon "example" {
+>   lane "main" {
+>    action "demo" {
+>      text = "Preview"
+>    }
+>  }
+> }
+> ```
+> ````
 
 ## Development
 

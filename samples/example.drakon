@@ -1,14 +1,71 @@
-# Sample DRAKON diagram
-node start start "Begin"
-node fetch action "Fetch input"
-node decide question "Is value valid?"
-node fix action "Request correction"
-node process action "Process value"
-node end end "Finish"
+# Sample DRAKON diagram using the HCL-compatible DSL
+drakon "sample_flow" {
+  lane "main" {
+    start "start" {
+      text = "Begin"
+    }
 
-edge start -> fetch
-edge fetch -> decide
-edge decide -> process yes
-edge decide -> fix no
-edge fix -> fetch
-edge process -> end
+    action "fetch" {
+      text = "Fetch input"
+    }
+
+    question "decide" {
+      text = "Is value valid?"
+      yes = {
+        target = "process"
+        label  = "Yes"
+      }
+      no = {
+        target = "fix"
+        label  = "No"
+      }
+    }
+
+    action "fix" {
+      text = "Request correction"
+    }
+
+    action "process" {
+      text = "Process value"
+    }
+
+    end "done" {
+      text = "Finish"
+    }
+  }
+
+  line {
+    from = "start"
+    to   = "fetch"
+  }
+
+  line {
+    from = "fetch"
+    to   = "decide"
+  }
+
+  line {
+    from  = "decide"
+    to    = "process"
+    kind  = "yes"
+    label = "Yes"
+  }
+
+  line {
+    from  = "decide"
+    to    = "fix"
+    kind  = "no"
+    label = "No"
+  }
+
+  line {
+    from  = "fix"
+    to    = "fetch"
+    kind  = "loop"
+  }
+
+  line {
+    from = "process"
+    to   = "done"
+  }
+}
