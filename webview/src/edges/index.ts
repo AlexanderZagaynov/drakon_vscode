@@ -69,16 +69,26 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
   if (attrs.branch_direct) {
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
     const fromWidth = fromNode?.geometry?.width ?? 0;
+    const toNode = nodeById.get(edge.toBase ?? edge.to);
+    const targetHeight = toNode?.geometry?.height ?? 0;
     const horizontalOffset = fromWidth / 2 + LAYOUT.laneGap / 2;
-    const elbowX = x1 + horizontalOffset;
-    return `M ${x1} ${y1} L ${elbowX} ${y1} L ${elbowX} ${y2} L ${x2} ${y2}`;
+    const outerX = x1 + horizontalOffset;
+    const targetTop = y2 - targetHeight / 2;
+    const clearance = Math.max(40, targetHeight / 3);
+    const joinCandidate = Math.min(targetTop - clearance, y2 - clearance);
+    const joinY = Math.min(Math.max(joinCandidate, y1 + clearance / 2), y2 - 8);
+    return `M ${x1} ${y1} L ${outerX} ${y1} L ${outerX} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
   }
 
   // Rejoin edges drop straight down to the main flow before turning.
   if (attrs.rejoin) {
-    const elbowX = x1;
-    const elbowY = y2;
-    return `M ${x1} ${y1} L ${elbowX} ${elbowY} L ${x2} ${y2}`;
+    const toNode = nodeById.get(edge.toBase ?? edge.to);
+    const targetHeight = toNode?.geometry?.height ?? 0;
+    const targetTop = y2 - targetHeight / 2;
+    const clearance = Math.max(40, targetHeight / 3);
+    const joinCandidate = Math.min(targetTop - clearance, y2 - clearance);
+    const joinY = Math.min(Math.max(joinCandidate, y1 + clearance / 2), y2 - 8);
+    return `M ${x1} ${y1} L ${x1} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
   }
 
   // If the nodes already align horizontally or vertically, keep the edge straight.

@@ -1,4 +1,4 @@
-import type { Diagram, LayoutResult, LayoutConfig, NodeGeometry, DiagramNode } from './types.js';
+import type { Diagram, LayoutResult, LayoutConfig, NodeGeometry, DiagramNode, DiagramEdge } from './types.js';
 import { getNodeSpec } from './shapes/index.js';
 import { baseAnchor } from './shared.js';
 import { wrapLabelText } from './text.js';
@@ -51,16 +51,46 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   const laneTop = LAYOUT.laneTopMargin;
   const laneLeft = LAYOUT.laneLeftMargin;
 
-  const depths = computeDepths(diagram);
-
   const columnEntries = new Map<number, { node: DiagramNode; order: number }[]>();
+  const inboundCount = new Map<string, number>();
+  diagram.edges.forEach((edge) => {
+    const toId = edge.toBase ?? baseAnchor(edge.to);
+    inboundCount.set(toId, (inboundCount.get(toId) ?? 0) + 1);
+  });
+
+  const syntheticEdges: DiagramEdge[] = [];
+  const lastInColumn = new Map<number, string>();
+
   diagram.nodes.forEach((node, index) => {
     const column = Number.isFinite(node.column) ? (node.column as number) : 0;
     if (!columnEntries.has(column)) {
       columnEntries.set(column, []);
     }
     columnEntries.get(column)?.push({ node, order: index });
+
+    const previousId = lastInColumn.get(column);
+    if (previousId && (inboundCount.get(node.id) ?? 0) === 0) {
+      syntheticEdges.push({
+        from: previousId,
+        to: node.id,
+        kind: 'layout',
+        label: '',
+        note: '',
+        handle: '',
+        attributes: { synthetic: true },
+        fromBase: previousId,
+        toBase: node.id
+      });
+    }
+    lastInColumn.set(column, node.id);
   });
+
+  const augmentedDiagram: Diagram = {
+    ...diagram,
+    edges: [...diagram.edges, ...syntheticEdges]
+  };
+
+  const depths = computeDepths(augmentedDiagram);
 
   if (!columnEntries.size) {
     columnEntries.set(0, []);

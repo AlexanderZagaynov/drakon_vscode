@@ -10,6 +10,7 @@ drakon "Question Example"
         text = "Get something"
       }
     }
+    next = "do_something"
   }
   action "do_something"
   {

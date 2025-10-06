@@ -3,12 +3,8 @@ drakon "Question Example"
   question "got_something"
   {
     text = "Got something?"
-    yes =
+    no =
     {
-      action "do_anything"
-      {
-        text = "Do anything"
-      }
     }
   }
   action "do_something"
