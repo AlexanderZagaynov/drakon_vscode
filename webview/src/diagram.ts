@@ -14,6 +14,17 @@ interface SplitResult {
   blocks: BlockStatement[];
 }
 
+type BranchKind = 'yes' | 'no';
+
+interface QuestionBranchInfo {
+  laneId: string;
+  branchKind: BranchKind;
+  branchStartId: string | null;
+  branchEndId: string | null;
+  defaultKind: BranchKind;
+  defaultTargetId: string | null;
+}
+
 function splitStatements(items: Statement[]): SplitResult {
   const grouped = Map.groupBy(items, (item) => item.type);
   const attributesEntries =
@@ -121,6 +132,25 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
   const nodeById = new Map<string, DiagramNode>();
   const laneById = new Map<string, Lane>();
   const laneOrder: Lane[] = [];
+  const questionBranchInfo = new Map<string, QuestionBranchInfo>();
+
+  const toStatementArray = (value: unknown): Statement[] | null => {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    const statements: Statement[] = [];
+    for (const entry of value) {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+      const candidate = entry as Statement;
+      if (candidate.type !== 'attribute' && candidate.type !== 'block') {
+        return null;
+      }
+      statements.push(candidate);
+    }
+    return statements;
+  };
 
   const registerAlias = (rawAlias: string | undefined, id: string) => {
     if (!rawAlias) {
@@ -161,7 +191,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
 
   const ensureLane = (
     id: string,
-    options?: { title?: string; tags?: string[]; raw?: BlockStatement; implicit?: boolean }
+    options?: { title?: string; tags?: string[]; raw?: BlockStatement; implicit?: boolean; after?: Lane }
   ): Lane => {
     let lane = laneById.get(id);
     if (!lane) {
@@ -181,7 +211,17 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
           } as BlockStatement)
       };
       laneById.set(id, lane);
-      laneOrder.push(lane);
+      const afterLane = options?.after;
+      if (afterLane) {
+        const referenceIndex = laneOrder.indexOf(afterLane);
+        if (referenceIndex !== -1) {
+          laneOrder.splice(referenceIndex + 1, 0, lane);
+        } else {
+          laneOrder.push(lane);
+        }
+      } else {
+        laneOrder.push(lane);
+      }
     } else {
       if (options?.title) {
         lane.title = options.title;
@@ -196,7 +236,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     return lane;
   };
 
-  const createLaneNode = (lane: Lane, block: BlockStatement): DiagramNode | null => {
+  function createLaneNode(lane: Lane, block: BlockStatement): DiagramNode | null {
     const disallowedInLane = new Set(['start', 'end', 'parameters', 'silhouette_loop', 'loop_silhouette']);
     if (disallowedInLane.has(block.name)) {
       if (block.name === 'parameters') {
@@ -234,8 +274,125 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     if (anchorAttr) {
       registerAlias(anchorAttr, node.id);
     }
+    if (block.name === 'question') {
+      processQuestionBranches(lane, node, nodeParts.attributes);
+    }
     return node;
-  };
+  }
+
+  function processQuestionBranches(lane: Lane, node: DiagramNode, attributes: Record<string, unknown>): void {
+    const yesStatements = toStatementArray(attributes.yes);
+    const noStatements = toStatementArray(attributes.no);
+
+    const branches: { kind: BranchKind; statements: Statement[] }[] = [];
+    if (yesStatements) {
+      if (yesStatements.length) {
+        branches.push({ kind: 'yes', statements: yesStatements });
+      } else {
+        errors.push(`Question "${node.id}" branch "yes" must include at least one block.`);
+      }
+    }
+    if (noStatements) {
+      if (noStatements.length) {
+        branches.push({ kind: 'no', statements: noStatements });
+      } else {
+        errors.push(`Question "${node.id}" branch "no" must include at least one block.`);
+      }
+    }
+
+    if (!branches.length) {
+      return;
+    }
+
+    if (branches.length > 1) {
+      errors.push(`Question "${node.id}" cannot define both "yes" and "no" branch blocks. Choose one explicit branch.`);
+      return;
+    }
+
+    const branch = branches[0];
+    const branchParts = splitStatements(branch.statements);
+    const branchBlocks = branchParts.blocks;
+    if (!branchBlocks.length) {
+      errors.push(`Question "${node.id}" branch "${branch.kind}" must contain at least one block.`);
+      return;
+    }
+
+    const requestedLaneId =
+      typeof branchParts.attributes.id === 'string' && branchParts.attributes.id.trim()
+        ? (branchParts.attributes.id as string).trim()
+        : '';
+    const baseLaneId = requestedLaneId || `${node.id}_${branch.kind}`;
+    let branchLaneId = baseLaneId;
+    let suffix = 2;
+    while (laneById.has(branchLaneId)) {
+      branchLaneId = `${baseLaneId}_${suffix}`;
+      suffix += 1;
+    }
+
+    const branchTitle =
+      typeof branchParts.attributes.title === 'string'
+        ? (branchParts.attributes.title as string).trim()
+        : '';
+    const branchTags = toArray(branchParts.attributes.tags);
+
+    const branchLane = ensureLane(branchLaneId, {
+      title: branchTitle,
+      tags: branchTags,
+      implicit: true,
+      after: lane
+    });
+
+    const startIndex = branchLane.nodes.length;
+    branchBlocks.forEach((child) => {
+      if (child.name === 'line' || child.name === 'attach' || child.name === 'note') {
+        errors.push(`Block "${child.name}" is not supported inside question branch "${branch.kind}" of "${node.id}".`);
+        return;
+      }
+      createLaneNode(branchLane, child);
+    });
+
+    const createdNodes = branchLane.nodes.slice(startIndex);
+    if (!createdNodes.length) {
+      errors.push(`Question "${node.id}" branch "${branch.kind}" did not create any nodes.`);
+      return;
+    }
+
+    const branchStart = createdNodes[0];
+    const branchEnd = createdNodes[createdNodes.length - 1];
+
+    const existingEdge = diagram.edges.some(
+      (edge) => (edge.fromBase ?? edge.from) === node.id && (edge.toBase ?? edge.to) === branchStart.id
+    );
+    if (!existingEdge) {
+      const branchLabel = branch.kind === 'yes' ? 'Yes' : 'No';
+      diagram.edges.push({
+        from: node.id,
+        to: branchStart.id,
+        kind: branch.kind,
+        label: branchLabel,
+        note: '',
+        handle: '',
+        attributes: { implicit: true, branch: branch.kind, branch_lane: true },
+        fromBase: node.id,
+        toBase: branchStart.id
+      });
+    }
+
+    questionBranchInfo.set(node.id, {
+      laneId: lane.id,
+      branchKind: branch.kind,
+      branchStartId: branchStart.id,
+      branchEndId: branchEnd.id,
+      defaultKind: branch.kind === 'yes' ? 'no' : 'yes',
+      defaultTargetId: null
+    });
+
+    attributes[branch.kind] = {
+      lane: branchLane.id,
+      start: branchStart.id,
+      end: branchEnd.id
+    };
+  }
 
   const resolveParametersValue = (
     value: unknown
@@ -620,19 +777,53 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
       if (explicitEdgeSet.has(key)) {
         continue;
       }
+      const branchInfo = questionBranchInfo.get(fromNode.id);
+      const edgeAttributes: Record<string, unknown> = { implicit: true };
+      let kind: string = 'main';
+      if (branchInfo) {
+        kind = branchInfo.defaultKind;
+        edgeAttributes.branch = branchInfo.defaultKind;
+        branchInfo.defaultTargetId = toNode.id;
+      }
       const edge: DiagramEdge = {
         from: fromNode.id,
         to: toNode.id,
-        kind: 'main',
+        kind,
         label: '',
         note: '',
         handle: '',
-        attributes: { implicit: true },
+        attributes: edgeAttributes,
         fromBase: fromNode.id,
         toBase: toNode.id
       };
       diagram.edges.push(edge);
     }
+  });
+
+  questionBranchInfo.forEach((info) => {
+    if (!info.branchEndId || !info.defaultTargetId) {
+      return;
+    }
+    if (info.branchEndId === info.defaultTargetId) {
+      return;
+    }
+    const key = `${info.branchEndId}>${info.defaultTargetId}`;
+    if (explicitEdgeSet.has(key)) {
+      return;
+    }
+    const edge: DiagramEdge = {
+      from: info.branchEndId,
+      to: info.defaultTargetId,
+      kind: 'main',
+      label: '',
+      note: '',
+      handle: '',
+      attributes: { implicit: true, branch: info.branchKind, rejoin: true },
+      fromBase: info.branchEndId,
+      toBase: info.defaultTargetId
+    };
+    diagram.edges.push(edge);
+    explicitEdgeSet.add(key);
   });
 
   diagram.edges.forEach((edge) => {

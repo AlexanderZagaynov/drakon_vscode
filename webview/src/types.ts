@@ -122,6 +122,7 @@ export interface NodeGeometry {
   paddingBottom: number;
   paddingLeft: number;
   paddingRight: number;
+  wrappedLines: string[];
 }
 
 export interface LayoutConfig {

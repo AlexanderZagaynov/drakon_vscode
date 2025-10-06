@@ -332,7 +332,7 @@ export class Parser {
       return this.parseArray();
     }
     if (token.type === 'brace_open') {
-      return this.parseObject();
+      return this.parseBraceValue();
     }
     this.errors.push(`Unexpected value "${token.value}" at line ${token.line}, column ${token.column}.`);
     this.consume();
@@ -354,18 +354,35 @@ export class Parser {
     return values;
   }
 
-  private parseObject(): Record<string, unknown> {
+  private parseBraceValue(): Record<string, unknown> | Statement[] {
     this.expect('brace_open');
-    const obj: Record<string, unknown> = {};
+    const statements: Statement[] = [];
+    let allAttributes = true;
     while (this.current().type !== 'brace_close' && this.current().type !== 'eof') {
-      const keyToken = this.expect('identifier');
-      this.expect('equals');
-      obj[String(keyToken.value)] = this.parseValue();
+      if (this.current().type === 'identifier' && this.peek().type === 'equals') {
+        const attribute = this.parseAttribute();
+        statements.push(attribute);
+      } else if (this.current().type === 'identifier') {
+        const block = this.parseBlock();
+        statements.push(block);
+        allAttributes = false;
+      } else {
+        this.errors.push(
+          `Unexpected token "${this.current().value}" inside inline block at line ${this.current().line}.`
+        );
+        this.consume();
+        allAttributes = false;
+        continue;
+      }
       if (this.current().type === 'comma') {
         this.consume();
       }
     }
     this.expect('brace_close');
-    return obj;
+    if (allAttributes) {
+      const entries = (statements as AttributeStatement[]).map(({ key, value }) => [key, value]);
+      return Object.fromEntries(entries);
+    }
+    return statements;
   }
 }

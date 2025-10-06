@@ -56,11 +56,22 @@ export function getNodeSpec(type: string): NodeSpec {
 
 export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>, node: DiagramNode): void {
   const geometry = node.geometry as NodeGeometry;
-  const { width, height, spec, lines, lineHeight, textYOffset, paddingTop, paddingLeft, paddingRight } = geometry;
+  const {
+    width,
+    height,
+    spec,
+    lines,
+    lineHeight,
+    textYOffset,
+    paddingTop,
+    paddingLeft,
+    paddingRight,
+    wrappedLines
+  } = geometry;
   const draw = spec.draw ?? defaultSpec.draw;
   draw(group, width, height, node);
 
-  const labelLines = node.label ? node.label.split(/\r?\n/) : [''];
+  const labelLines = wrappedLines && wrappedLines.length ? wrappedLines : [''];
   const baselineMode = spec.textBaseline ?? 'center';
   const alignMode = spec.textAlign ?? 'center';
   const anchor = alignMode === 'left' ? 'start' : alignMode === 'right' ? 'end' : 'middle';
@@ -85,7 +96,8 @@ export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>
         .text(line);
     });
   } else {
-    const initialDy = -((lines - 1) / 2) * lineHeight;
+    const lineCount = Math.max(1, lines);
+    const initialDy = -((lineCount - 1) / 2) * lineHeight;
     text.attr('dominant-baseline', 'middle').attr('y', textYOffset).attr('x', baseX);
     labelLines.forEach((line, index) => {
       text

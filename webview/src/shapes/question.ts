@@ -11,10 +11,15 @@ import {
 
 function drawQuestionShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   const path = d3.path();
-  path.moveTo(0, -height / 2);
-  path.lineTo(width / 2, 0);
-  path.lineTo(0, height / 2);
-  path.lineTo(-width / 2, 0);
+  const bevel = Math.min(width / 4, height / 1.5);
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  path.moveTo(-halfWidth + bevel, -halfHeight);
+  path.lineTo(halfWidth - bevel, -halfHeight);
+  path.lineTo(halfWidth, 0);
+  path.lineTo(halfWidth - bevel, halfHeight);
+  path.lineTo(-halfWidth + bevel, halfHeight);
+  path.lineTo(-halfWidth, 0);
   path.closePath();
   group
     .append('path')
@@ -23,10 +28,10 @@ function drawQuestionShape(group: NodeSelection, width: number, height: number, 
 }
 
 export const questionSpec: NodeSpec = {
-  width: BASE_NODE_WIDTH * (7 / 6),
-  minHeight: BASE_NODE_MIN_HEIGHT * (18 / 17),
-  lineHeight: BASE_LINE_HEIGHT * (12 / 11),
-  textPaddingTop: BASE_TEXT_PADDING_TOP * (9 / 7),
-  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (9 / 7),
+  width: BASE_NODE_WIDTH * (4 / 3),
+  minHeight: BASE_NODE_MIN_HEIGHT,
+  lineHeight: BASE_LINE_HEIGHT,
+  textPaddingTop: BASE_TEXT_PADDING_TOP,
+  textPaddingBottom: BASE_TEXT_PADDING_BOTTOM,
   draw: drawQuestionShape
 };

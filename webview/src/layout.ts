@@ -9,6 +9,7 @@ import type {
 } from './types.js';
 import { getNodeSpec } from './shapes/index.js';
 import { baseAnchor } from './shared.js';
+import { wrapLabelText } from './text.js';
 
 export const LAYOUT: LayoutConfig = {
   laneGap: 140,
@@ -22,7 +23,6 @@ export const LAYOUT: LayoutConfig = {
 export function prepareNodes(diagram: Diagram): void {
   diagram.nodes.forEach((node) => {
     const spec = getNodeSpec(node.type);
-    const lines = Math.max(1, node.label ? node.label.split(/\r?\n/).length : 1);
     const lineHeight = spec.lineHeight ?? 22;
     const paddingTop = spec.textPaddingTop ?? 28;
     const paddingBottom = spec.textPaddingBottom ?? 28;
@@ -31,18 +31,23 @@ export function prepareNodes(diagram: Diagram): void {
     const width = spec.width ?? spec.baseWidth ?? 240;
     const minHeight = spec.minHeight ?? (spec.width ?? 170);
     const dynamicHeight = spec.dynamicHeight !== false;
-    const computedHeight = dynamicHeight ? Math.max(minHeight, paddingTop + paddingBottom + lines * lineHeight) : minHeight;
+    const wrappedLines = wrapLabelText(node.label, width, paddingLeft, paddingRight);
+    const lineCount = Math.max(1, wrappedLines.length);
+    const computedHeight = dynamicHeight
+      ? Math.max(minHeight, paddingTop + paddingBottom + lineCount * lineHeight)
+      : minHeight;
     const geometry: NodeGeometry = {
       width,
       height: computedHeight,
-      lines,
+      lines: lineCount,
       lineHeight,
       textYOffset: spec.textYOffset ?? 0,
       spec,
       paddingTop,
       paddingBottom,
       paddingLeft,
-      paddingRight
+      paddingRight,
+      wrappedLines
     };
     node.geometry = geometry;
   });
@@ -85,7 +90,6 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   const laneLayouts: LaneLayout[] = [];
   let currentX = laneLeft;
-  let requiredHeight = laneTop;
 
   lanes.forEach((lane) => {
     const nodes = laneNodesMap.get(lane.id) ?? [];
@@ -96,25 +100,65 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     currentX += laneWidth + laneGap;
   });
 
-  const positions = new Map<string, { x: number; y: number }>();
-
-  laneLayouts.forEach((lane) => {
-    let currentY = laneTop;
-    lane.nodes.forEach(({ node }, index) => {
-      const height = node.geometry?.height ?? 170;
-      const y = currentY + height / 2;
-      positions.set(node.id, { x: lane.x, y });
-      currentY += height;
-      if (index < lane.nodes.length - 1) {
-        currentY += laneSpacing;
-      }
-    });
-    lane.totalHeight = currentY;
-    requiredHeight = Math.max(requiredHeight, currentY);
+  const defaultHeight = 170;
+  const levelNodes = new Map<number, DiagramNode[]>();
+  diagram.nodes.forEach((node) => {
+    const depth = depths.get(node.id) ?? 0;
+    if (!levelNodes.has(depth)) {
+      levelNodes.set(depth, []);
+    }
+    levelNodes.get(depth)?.push(node);
   });
 
+  const sortedLevels = Array.from(levelNodes.keys()).sort((a, b) => a - b);
+  const levelCenters = new Map<number, number>();
+  let cursorY = laneTop;
+  if (!sortedLevels.length) {
+    levelCenters.set(0, laneTop + defaultHeight / 2);
+    cursorY = laneTop + defaultHeight;
+  } else {
+    sortedLevels.forEach((level, index) => {
+      const nodesAtLevel = levelNodes.get(level) ?? [];
+      const maxHeight = nodesAtLevel.reduce(
+        (acc, node) => Math.max(acc, node.geometry?.height ?? defaultHeight),
+        defaultHeight
+      );
+      const centerY = cursorY + maxHeight / 2;
+      levelCenters.set(level, centerY);
+      cursorY += maxHeight;
+      if (index < sortedLevels.length - 1) {
+        cursorY += laneSpacing;
+      }
+    });
+  }
+
+  const fallbackCenter = levelCenters.get(sortedLevels[0] ?? 0) ?? laneTop + defaultHeight / 2;
+
+  const positions = new Map<string, { x: number; y: number }>();
+  let globalTop = Number.POSITIVE_INFINITY;
+  let globalBottom = laneTop;
+
+  laneLayouts.forEach((lane) => {
+    lane.nodes.forEach(({ node }) => {
+      const depth = depths.get(node.id) ?? 0;
+      const centerY = levelCenters.get(depth) ?? fallbackCenter;
+      const height = node.geometry?.height ?? defaultHeight;
+      positions.set(node.id, { x: lane.x, y: centerY });
+      const top = centerY - height / 2;
+      const bottom = centerY + height / 2;
+      globalTop = Math.min(globalTop, top);
+      globalBottom = Math.max(globalBottom, bottom);
+    });
+    lane.totalHeight = cursorY;
+  });
+
+  if (!Number.isFinite(globalTop)) {
+    globalTop = laneTop;
+    globalBottom = laneTop + defaultHeight;
+  }
+
   const totalWidth = Math.max(currentX - laneGap + laneLeft, 640);
-  const totalHeight = Math.max(requiredHeight + LAYOUT.laneBottomMargin, 600);
+  const totalHeight = Math.max(globalBottom + LAYOUT.laneBottomMargin, 600);
 
   diagram.edges.forEach((edge) => {
     edge.fromBase = edge.fromBase ?? baseAnchor(edge.from);
@@ -152,7 +196,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
 function computeDepths(diagram: Diagram): Map<string, number> {
   const depths = new Map<string, number>();
-  const adjacency = new Map<string, string[]>();
+  const adjacency = new Map<string, { id: string; weight: number }[]>();
   const indegree = new Map<string, number>();
 
   diagram.nodes.forEach((node) => {
@@ -166,7 +210,10 @@ function computeDepths(diagram: Diagram): Map<string, number> {
     if (!adjacency.has(from) || !adjacency.has(to)) {
       return;
     }
-    adjacency.get(from)?.push(to);
+    const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
+    const isBranchLane = Boolean(attrs.branch_lane);
+    const weight = isBranchLane ? 0 : 1;
+    adjacency.get(from)?.push({ id: to, weight });
     indegree.set(to, (indegree.get(to) ?? 0) + 1);
   });
 
@@ -181,8 +228,8 @@ function computeDepths(diagram: Diagram): Map<string, number> {
   while (queue.length) {
     const current = queue.shift() ?? '';
     const currentDepth = depths.get(current) ?? 0;
-    (adjacency.get(current) ?? []).forEach((neighbor) => {
-      const candidateDepth = currentDepth + 1;
+    (adjacency.get(current) ?? []).forEach(({ id: neighbor, weight }) => {
+      const candidateDepth = currentDepth + weight;
       if (!depths.has(neighbor) || candidateDepth > (depths.get(neighbor) ?? 0)) {
         depths.set(neighbor, candidateDepth);
       }

@@ -1,4 +1,4 @@
-import type { Diagram } from './types.js';
+import type { Diagram, DiagramEdge } from './types.js';
 import { tokenize, Parser } from './parse.js';
 import { buildDiagram } from './diagram.js';
 import { prepareNodes, buildLayout, LAYOUT } from './layout.js';
@@ -74,57 +74,10 @@ function drawDiagram(
     .attr('d', 'M 0 0 L 10 5 L 0 10 z')
     .attr('class', 'edge-head');
 
-  const laneGroup = svg.append('g').attr('class', 'lanes');
+  svg.append('g').attr('class', 'lanes');
 
-  const lanesForBackground = layout.lanes.filter((lane) => lane.innerTop !== undefined && lane.innerBottom !== undefined);
-
-  laneGroup
-    .selectAll('rect')
-    .data(lanesForBackground)
-    .enter()
-    .append('rect')
-    .attr('class', 'lane-background')
-    .attr('x', (d) => d.x - d.width / 2)
-    .attr('y', (d) => {
-      const padding = 40;
-      const rawTop = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding;
-      return Math.max(LAYOUT.laneTopMargin / 2, rawTop);
-    })
-    .attr('width', (d) => d.width)
-    .attr('height', (d) => {
-      const padding = 40;
-      const rawTop = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding;
-      const top = Math.max(LAYOUT.laneTopMargin / 2, rawTop);
-      const rawBottom = (d.innerBottom ?? (LAYOUT.laneTopMargin / 2 + 160)) + padding;
-      const height = rawBottom - top;
-      return Math.max(120, height);
-    })
-    .attr('rx', 18)
-    .attr('ry', 18);
-
-  const visibleLaneTitles = layout.lanes.filter((lane) => {
-    if (lane.innerTop === undefined || lane.innerBottom === undefined) {
-      return false;
-    }
-    if (lane.implicit && (lane.id === 'main' || !lane.title || lane.title === lane.id)) {
-      return false;
-    }
-    return true;
-  });
-
-  laneGroup
-    .selectAll('text')
-    .data(visibleLaneTitles)
-    .enter()
-    .append('text')
-    .attr('class', 'lane-title')
-    .attr('x', (d) => d.x)
-    .attr('y', (d) => {
-      const padding = 40;
-      const candidate = (d.innerTop ?? LAYOUT.laneTopMargin / 2) - padding - 16;
-      return Math.max(LAYOUT.laneTopMargin / 2 - 26, candidate);
-    })
-    .text((d) => d.title ?? d.id);
+  const nodeById = new Map<string, Diagram['nodes'][number]>();
+  diagram.nodes.forEach((node) => nodeById.set(node.id, node));
 
   const visibleEdges = diagram.edges.filter(
     (edge) => layout.positions.has(edge.fromBase ?? '') && layout.positions.has(edge.toBase ?? '')
@@ -133,16 +86,90 @@ function drawDiagram(
   const edgesGroup = svg.append('g').attr('class', 'edges');
   const nodesGroup = svg.append('g').attr('class', 'nodes');
 
+  const buildEdgePath = (edge: DiagramEdge) => {
+    const from = layout.positions.get(edge.fromBase ?? '') ?? { x: 0, y: 0 };
+    const to = layout.positions.get(edge.toBase ?? '') ?? { x: 0, y: 0 };
+    const x1 = from.x;
+    const y1 = from.y;
+    const x2 = to.x;
+    const y2 = to.y;
+    if (Math.abs(x1 - x2) < 0.01 || Math.abs(y1 - y2) < 0.01) {
+      return `M ${x1} ${y1} L ${x2} ${y2}`;
+    }
+    const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
+    if (attrs.rejoin) {
+      const elbowX = x1;
+      const elbowY = y2;
+      return `M ${x1} ${y1} L ${elbowX} ${elbowY} L ${x2} ${y2}`;
+    }
+    const elbowX = x2;
+    const elbowY = y1;
+    return `M ${x1} ${y1} L ${elbowX} ${elbowY} L ${x2} ${y2}`;
+  };
+
+  const edgeLabelPosition = (edge: DiagramEdge) => {
+    const from = layout.positions.get(edge.fromBase ?? '') ?? { x: 0, y: 0 };
+    const to = layout.positions.get(edge.toBase ?? '') ?? { x: 0, y: 0 };
+    const x1 = from.x;
+    const y1 = from.y;
+    const x2 = to.x;
+    const y2 = to.y;
+    if (Math.abs(x1 - x2) < 0.01 || Math.abs(y1 - y2) < 0.01) {
+      return {
+        x: (x1 + x2) / 2,
+        y: (y1 + y2) / 2 - 12
+      };
+    }
+    const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
+    if (attrs.rejoin) {
+      return {
+        x: (x1 + x2) / 2,
+        y: y2 - 12
+      };
+    }
+    if (attrs.branch_lane) {
+      const fromNode = nodeById.get(edge.fromBase ?? edge.from);
+      const fromWidth = fromNode?.geometry?.width ?? 0;
+      const isRightward = x2 >= x1;
+      return {
+        x: isRightward ? x1 + fromWidth / 2 + 12 : x1 - fromWidth / 2 - 12,
+        y: y1 - 12
+      };
+    }
+    const horizontalLength = Math.abs(x2 - x1);
+    const verticalLength = Math.abs(y2 - y1);
+    if (horizontalLength >= verticalLength) {
+      return {
+        x: (x1 + x2) / 2,
+        y: y1 - 12
+      };
+    }
+    return {
+      x: x2,
+      y: (y1 + y2) / 2 - 12
+    };
+  };
+
+  const edgeLabelAnchor = (edge: DiagramEdge) => {
+    const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
+    if (attrs.branch_lane) {
+      const from = layout.positions.get(edge.fromBase ?? '') ?? { x: 0, y: 0 };
+      const to = layout.positions.get(edge.toBase ?? '') ?? { x: 0, y: 0 };
+      return to.x >= from.x ? 'start' : 'end';
+    }
+    if (attrs.rejoin) {
+      return 'middle';
+    }
+    return 'middle';
+  };
+
   edgesGroup
-    .selectAll('line')
+    .selectAll('path')
     .data(visibleEdges)
     .enter()
-    .append('line')
+    .append('path')
     .attr('class', (d) => `edge ${d.kind ?? 'main'}`)
-    .attr('x1', (d) => layout.positions.get(d.fromBase ?? '')?.x ?? 0)
-    .attr('y1', (d) => layout.positions.get(d.fromBase ?? '')?.y ?? 0)
-    .attr('x2', (d) => layout.positions.get(d.toBase ?? '')?.x ?? 0)
-    .attr('y2', (d) => layout.positions.get(d.toBase ?? '')?.y ?? 0)
+    .attr('d', (d) => buildEdgePath(d))
     .attr('marker-end', 'url(#arrowhead)');
 
   edgesGroup
@@ -151,14 +178,9 @@ function drawDiagram(
     .enter()
     .append('text')
     .attr('class', 'edge-label')
-    .attr(
-      'x',
-      (d) => ((layout.positions.get(d.fromBase ?? '')?.x ?? 0) + (layout.positions.get(d.toBase ?? '')?.x ?? 0)) / 2
-    )
-    .attr(
-      'y',
-      (d) => ((layout.positions.get(d.fromBase ?? '')?.y ?? 0) + (layout.positions.get(d.toBase ?? '')?.y ?? 0)) / 2 - 12
-    )
+    .attr('x', (d) => edgeLabelPosition(d).x)
+    .attr('y', (d) => edgeLabelPosition(d).y)
+    .attr('text-anchor', (d) => edgeLabelAnchor(d))
     .text((d) => d.label);
 
   const nodeEnter = nodesGroup
