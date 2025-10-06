@@ -12,10 +12,17 @@
   ],
   "activationEvents": [
     "onLanguage:drakon",
-    "onCustomEditor:drakonViewer.drakonEditor"
+    "onCustomEditor:drakonViewer.drakonEditor",
+    "onCommand:drakonViewer.exportActiveDiagram"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "drakonViewer.exportActiveDiagram",
+        "title": "DRAKON: Export Active Diagram"
+      }
+    ],
     "languages": [
       {
         "id": "drakon",
@@ -44,13 +51,19 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "test": "echo \"No tests yet\""
+    "compile": "npm run compile:extension && npm run compile:webview",
+    "compile:extension": "tsc -p ./",
+    "compile:webview": "tsc -p webview/tsconfig.json",
+    "watch": "npm-run-all --parallel watch:extension watch:webview",
+    "watch:extension": "tsc -watch -p ./",
+    "watch:webview": "tsc -watch -p webview/tsconfig.json",
+    "test": "echo 'No tests yet'"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.84.0",
+    "@types/d3": "^7.4.3",
+    "npm-run-all": "^4.1.5",
     "typescript": "^5.4.0"
   }
 }

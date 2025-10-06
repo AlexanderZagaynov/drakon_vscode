@@ -1,0 +1,196 @@
+drakon "quicksort" {
+  title = "QuickSort"
+
+  lane "header" {
+    title = "QuickSort"
+
+    start "start" {
+      text = "QuickSort"
+    }
+
+    parameters "signature" {
+      text = "public\nstruct ObjectArray* collection // The array to sort.\nint begin // The first element of the range to sort.\nint end // The element which is right after the last element.\nObjectComparer compare // The comparison function."
+    }
+  }
+
+  lane "analyze" {
+    title = "Analyze input"
+
+    insertion "analyze_entry" {
+      text = "Analyze input"
+    }
+
+    parameters "state_vars" {
+      text = "int i;\nint pivotIndex;\nint storeIndex;"
+    }
+
+    action "compute_length" {
+      text = "int length = end - begin;\nint last = end - 1;"
+    }
+
+    choice "length_choice" {
+      text = "length"
+    }
+
+    action "length_is_zero" {
+      text = "0"
+    }
+
+    action "length_is_one" {
+      text = "1"
+    }
+
+    action "length_is_two" {
+      text = "2"
+    }
+
+    comment "trivial_case_note" {
+      text        = "The trivial case.\nNothing to do."
+      attaches_to = "length_is_zero"
+      placement   = "below"
+    }
+
+    insertion "analyze_exit" {
+      text = "exit"
+    }
+  }
+
+  lane "simple_lane" {
+    title = "simple case"
+
+    insertion "simple_entry" {
+      text = "simple case"
+    }
+
+    question "simple_condition" {
+      text = "compare(collection, begin, last) <= 0"
+    }
+
+    action "simple_swap" {
+      text = "Swap(collection, begin, last);"
+    }
+
+    insertion "simple_exit" {
+      text = "exit"
+    }
+  }
+
+  lane "partition_lane" {
+    title = "partition"
+
+    insertion "partition_entry" {
+      text = "partition"
+    }
+
+    action "choose_pivot" {
+      text = "pivotIndex = begin + length / 2;"
+    }
+
+    action "move_pivot" {
+      text = "Swap(collection, pivotIndex, last);\nstoreIndex = begin;"
+    }
+
+    for_each "loop_over_range" {
+      text = "i = begin; i < last; i++"
+    }
+
+    question "compare_with_last" {
+      text = "compare(collection, i, last) < 0"
+    }
+
+    action "swap_into_store" {
+      text = "Swap(collection, i, storeIndex);\nstoreIndex++;"
+    }
+
+    action "loop_continue" {
+      text = ""
+    }
+
+    action "swap_pivot_home" {
+      text = "Swap(collection, storeIndex, last);"
+    }
+
+    insertion "partition_exit" {
+      text = "recurse"
+    }
+  }
+
+  lane "recurse_lane" {
+    title = "recurse"
+
+    insertion "recurse_entry" {
+      text = "recurse"
+    }
+
+    action "recurse_left" {
+      text = "QuickSort(\n  collection,\n  begin,\n  storeIndex,\n  compare\n);"
+    }
+
+    action "recurse_right" {
+      text = "QuickSort(\n  collection,\n  storeIndex + 1,\n  end,\n  compare\n);"
+    }
+
+    insertion "recurse_exit" {
+      text = "exit"
+    }
+  }
+
+  lane "final_exit" {
+    title = "exit"
+
+    insertion "exit_entry" {
+      text = "exit"
+    }
+
+    end "end" {
+      text = "End"
+    }
+  }
+
+  # Header flow
+  line { from = "start" to = "signature" }
+  line { from = "signature" to = "analyze_entry" }
+
+  # Analyze flow
+  line { from = "analyze_entry" to = "state_vars" }
+  line { from = "state_vars" to = "compute_length" }
+  line { from = "compute_length" to = "length_choice" }
+
+  line { from = "length_choice" to = "length_is_zero" label = "0" }
+  line { from = "length_choice" to = "length_is_one" label = "1" }
+  line { from = "length_choice" to = "length_is_two" label = "2" }
+
+  line { from = "length_is_zero" to = "analyze_exit" }
+  line { from = "length_is_one" to = "simple_entry" }
+  line { from = "length_is_two" to = "partition_entry" }
+
+  # Simple case flow
+  line { from = "simple_entry" to = "simple_condition" }
+  line { from = "simple_condition" to = "simple_exit" label = "Yes" }
+  line { from = "simple_condition" to = "simple_swap" label = "No" }
+  line { from = "simple_swap" to = "simple_exit" }
+
+  # Partition flow
+  line { from = "partition_entry" to = "choose_pivot" }
+  line { from = "choose_pivot" to = "move_pivot" }
+  line { from = "move_pivot" to = "loop_over_range" }
+  line { from = "loop_over_range" to = "compare_with_last" }
+  line { from = "compare_with_last" to = "swap_into_store" label = "Yes" }
+  line { from = "compare_with_last" to = "loop_continue" label = "No" }
+  line { from = "swap_into_store" to = "loop_continue" }
+  line { from = "loop_continue" to = "loop_over_range" }
+  line { from = "loop_over_range" to = "swap_pivot_home" }
+  line { from = "swap_pivot_home" to = "partition_exit" }
+
+  # Recurse flow
+  line { from = "partition_exit" to = "recurse_entry" }
+  line { from = "recurse_entry" to = "recurse_left" }
+  line { from = "recurse_left" to = "recurse_right" }
+  line { from = "recurse_right" to = "recurse_exit" }
+
+  # Final exit wiring
+  line { from = "analyze_exit" to = "exit_entry" }
+  line { from = "simple_exit" to = "exit_entry" }
+  line { from = "recurse_exit" to = "exit_entry" }
+  line { from = "exit_entry" to = "end" }
+}

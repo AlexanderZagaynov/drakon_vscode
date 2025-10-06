@@ -1,0 +1,228 @@
+drakon "shape_test" {
+  title = "DRAKON Shape Test"
+
+  lane "shapes" {
+    title = "All Shape Types"
+
+    start "begin" {
+      text = "Start"
+    }
+
+    parameters "params" {
+      text = "Parameters Block"
+      inputs = {
+        x = "int x"
+        y = "int y"
+      }
+    }
+
+    action "action_1" {
+      text = "Action Block\nwith multiple lines"
+    }
+
+    question "question_1" {
+      text = "Question?"
+    }
+
+    choice "choice_1" {
+      text = "Choice Block"
+      case {
+        label = "Option A"
+        target = "output_1"
+      }
+      case {
+        label = "Option B"
+        target = "output_2"
+      }
+    }
+
+    input "input_1" {
+      actor = "User"
+      message = "Input Block"
+    }
+
+    output "output_1" {
+      actor = "System"
+      message = "Output Block 1"
+    }
+
+    simple_input "simple_in" {
+      text = "Simple Input"
+    }
+
+    simple_output "simple_out" {
+      text = "Simple Output"
+    }
+
+    output "output_2" {
+      actor = "System"
+      message = "Output Block 2"
+    }
+
+    comment "comment_1" {
+      text = "This is a comment\nwith folded corner"
+    }
+
+    insertion "insertion_1" {
+      text = "Insertion Block"
+      target = "process_1"
+    }
+
+    for_each "loop_1" {
+      text = "For Each Item"
+      collection = "items"
+    }
+
+    parallel "parallel_1" {
+      text = "Parallel Process"
+    }
+
+    process "process_1" {
+      text = "Process Block"
+      command = "Execute"
+    }
+
+    shelf "shelf_1" {
+      text = "Shelf Block"
+      storage = "data"
+    }
+
+    ctrl_period_start "ctrl_start" {
+      text = "Control Period Start"
+    }
+
+    ctrl_period_end "ctrl_end" {
+      text = "Control Period End"
+    }
+
+    duration "duration_1" {
+      text = "Duration"
+      window = "PT5M"
+    }
+
+    pause "pause_1" {
+      text = "Pause Block"
+    }
+
+    timer "timer_1" {
+      text = "Timer Block"
+      timeout = "PT10S"
+    }
+
+    end "finish" {
+      text = "End"
+    }
+  }
+
+  line {
+    from = "begin"
+    to = "params"
+  }
+
+  line {
+    from = "params"
+    to = "action_1"
+  }
+
+  line {
+    from = "action_1"
+    to = "question_1"
+  }
+
+  line {
+    from = "question_1"
+    to = "choice_1"
+    kind = "yes"
+  }
+
+  line {
+    from = "question_1"
+    to = "input_1"
+    kind = "no"
+  }
+
+  line {
+    from = "choice_1"
+    to = "output_1"
+  }
+
+  line {
+    from = "choice_1"
+    to = "output_2"
+  }
+
+  line {
+    from = "input_1"
+    to = "simple_in"
+  }
+
+  line {
+    from = "simple_in"
+    to = "simple_out"
+  }
+
+  line {
+    from = "simple_out"
+    to = "insertion_1"
+  }
+
+  line {
+    from = "output_1"
+    to = "loop_1"
+  }
+
+  line {
+    from = "output_2"
+    to = "loop_1"
+  }
+
+  line {
+    from = "loop_1"
+    to = "parallel_1"
+  }
+
+  line {
+    from = "parallel_1"
+    to = "process_1"
+  }
+
+  line {
+    from = "insertion_1"
+    to = "process_1"
+  }
+
+  line {
+    from = "process_1"
+    to = "shelf_1"
+  }
+
+  line {
+    from = "shelf_1"
+    to = "ctrl_start"
+  }
+
+  line {
+    from = "ctrl_start"
+    to = "ctrl_end"
+  }
+
+  line {
+    from = "ctrl_end"
+    to = "duration_1"
+  }
+
+  line {
+    from = "duration_1"
+    to = "pause_1"
+  }
+
+  line {
+    from = "pause_1"
+    to = "timer_1"
+  }
+
+  line {
+    from = "timer_1"
+    to = "finish"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "es2020",
+    "target": "es2020",
+    "outDir": "../assets/js",
+    "rootDir": "./src",
+    "lib": ["dom", "es2020"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "sourceMap": false
+  },
+  "include": ["./src/**/*.ts", "./src/**/*.d.ts"]
+}

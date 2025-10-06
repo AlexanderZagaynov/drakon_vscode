@@ -1,0 +1,87 @@
+import type { Selection } from 'd3';
+import type { DiagramNode, NodeGeometry, NodeSpec } from '../types.js';
+import { defaultSpec } from './default.js';
+import { startSpec } from './start.js';
+import { endSpec } from './end.js';
+import { actionSpec } from './action.js';
+import { parametersSpec } from './parameters.js';
+import { commentSpec } from './comment.js';
+import { questionSpec } from './question.js';
+import { choiceSpec } from './choice.js';
+import { insertionSpec } from './insertion.js';
+import { forEachSpec } from './for_each.js';
+import { parallelSpec } from './parallel.js';
+import { inputSpec } from './input.js';
+import { outputSpec } from './output.js';
+import { simpleInputSpec } from './simple_input.js';
+import { simpleOutputSpec } from './simple_output.js';
+import { shelfSpec } from './shelf.js';
+import { processSpec } from './process.js';
+import { ctrlPeriodStartSpec } from './ctrl_period_start.js';
+import { ctrlPeriodEndSpec } from './ctrl_period_end.js';
+import { durationSpec } from './duration.js';
+import { pauseSpec } from './pause.js';
+import { timerSpec } from './timer.js';
+import { groupDurationSpec } from './group_duration.js';
+
+const NODE_LIBRARY: Record<string, NodeSpec> = {
+  default: defaultSpec,
+  start: startSpec,
+  end: endSpec,
+  action: actionSpec,
+  parameters: parametersSpec,
+  comment: commentSpec,
+  question: questionSpec,
+  choice: choiceSpec,
+  insertion: insertionSpec,
+  for_each: forEachSpec,
+  parallel: parallelSpec,
+  input: inputSpec,
+  output: outputSpec,
+  simple_input: simpleInputSpec,
+  simple_output: simpleOutputSpec,
+  shelf: shelfSpec,
+  process: processSpec,
+  ctrl_period_start: ctrlPeriodStartSpec,
+  ctrl_period_end: ctrlPeriodEndSpec,
+  duration: durationSpec,
+  pause: pauseSpec,
+  timer: timerSpec,
+  group_duration: groupDurationSpec
+};
+
+export function getNodeSpec(type: string): NodeSpec {
+  return NODE_LIBRARY[type] ?? defaultSpec;
+}
+
+export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>, node: DiagramNode): void {
+  const geometry = node.geometry as NodeGeometry;
+  const { width, height, spec, lines, lineHeight, textYOffset, paddingTop } = geometry;
+  const draw = spec.draw ?? defaultSpec.draw;
+  draw(group, width, height, node);
+
+  const labelLines = node.label ? node.label.split(/\r?\n/) : [''];
+  const text = group
+    .append('text')
+    .attr('class', 'node-label')
+    .attr('text-anchor', 'middle');
+
+  const baselineMode = spec.textBaseline ?? 'center';
+  let startY: number;
+  if (baselineMode === 'top') {
+    const topOffset = -height / 2 + paddingTop;
+    startY = topOffset + lineHeight / 2;
+  } else {
+    startY = textYOffset - ((lines - 1) / 2) * lineHeight;
+  }
+
+  let currentY = startY;
+  labelLines.forEach((line) => {
+    text
+      .append('tspan')
+      .attr('x', 0)
+      .attr('y', currentY)
+      .text(line);
+    currentY += lineHeight;
+  });
+}

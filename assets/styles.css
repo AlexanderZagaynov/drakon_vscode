@@ -1,0 +1,289 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--vscode-font-family);
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.toolbar-label {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-right: 4px;
+}
+
+.export-btn {
+  padding: 4px 12px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  transition: background 0.1s;
+}
+
+.export-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.export-btn:active {
+  transform: translateY(1px);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#diagram-container {
+  flex: 1;
+  overflow: auto;
+  background: var(--vscode-editor-background);
+}
+
+#diagram {
+  min-height: 100%;
+  min-width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#diagram svg {
+  background: #c8e6f5;
+  border-radius: 8px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+  max-width: 100%;
+}
+
+.lane-background {
+  fill: #9ba8b0;
+  stroke: #7a8891;
+  stroke-width: 1;
+  opacity: 0.8;
+}
+
+.lane-title {
+  fill: #000000;
+  font-size: 16px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.node-shape {
+  stroke: #2c3e50;
+  stroke-width: 2;
+  fill: #ffffff;
+}
+
+.node-shape.action,
+.node-shape.for_each,
+.node-shape.parallel {
+  fill: #f8f8f8;
+}
+
+.node-shape.action.loop_end {
+  fill: #f0ffd0;
+}
+
+.node-shape.parameters {
+  fill: #e8f0ff;
+}
+
+.node-shape.comment {
+  fill: #d0d0d0;
+}
+
+.node-shape.choice {
+  fill: #fff9e6;
+}
+
+.node-shape.question {
+  fill: #fff9e6;
+}
+
+.node-shape.start,
+.node-shape.end {
+  fill: #e0ffe0;
+}
+
+.node-shape.input,
+.node-shape.simple_input {
+  fill: #f0f8ff;
+}
+
+.node-shape.output,
+.node-shape.simple_output {
+  fill: #f0fff0;
+}
+
+.node-shape.process {
+  fill: #fff8f0;
+}
+
+.node-shape.insertion {
+  fill: #e8f4ff;
+  stroke-width: 2.5;
+}
+
+/* Specific node overrides for better visual distinction */
+/* Darker nodes for recurse-related blocks */
+.node.recurse_partition .node-shape.action {
+  fill: #404040;
+}
+
+.node.recurse_partition .node-label {
+  fill: #ffffff;
+}
+
+/* Light green for loop end marker */
+.node.loop_end .node-shape {
+  fill: #e8ffe8;
+}
+
+/* Darker nodes in recurse lane */
+.node.recurse_left .node-shape.action,
+.node.recurse_right .node-shape.action {
+  fill: #606060;
+}
+
+.node.recurse_left .node-label,
+.node.recurse_right .node-label {
+  fill: #ffffff;
+}
+
+.node-shape.duration {
+  fill: #d6ebf5;
+}
+
+.node-shape.group_duration {
+  fill: #e8dff5;
+}
+
+.node-shape.pause {
+  fill: #fce4ec;
+}
+
+.node-shape.timer {
+  fill: #fff3e0;
+}
+
+.node-shape.ctrl_period_start,
+.node-shape.ctrl_period_end {
+  fill: #f5f5f5;
+}
+
+.node-shape.shelf {
+  fill: #e0f7fa;
+}
+
+.node-label {
+  font-size: 14px;
+  fill: #000000;
+  pointer-events: none;
+}
+
+.node.comment .node-shape.comment,
+.node.note .node-shape.comment {
+  fill: color-mix(in srgb, var(--vscode-editor-background) 85%, #90caf9);
+}
+
+.node-divider {
+  stroke: #4a5568;
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.node-inset {
+  fill: none;
+  stroke: #4a5568;
+  stroke-width: 1.3;
+  opacity: 0.65;
+}
+
+.node-band {
+  fill: #e0e0e0;
+  stroke: none;
+}
+
+.edge {
+  stroke: #2c3e50;
+  stroke-width: 2;
+  fill: none;
+}
+
+.edge-head {
+  fill: #2c3e50;
+}
+
+.edge-label {
+  font-size: 12px;
+  fill: #2c3e50;
+  text-anchor: middle;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.edge.signal {
+  stroke-dasharray: 6 6;
+}
+
+#errors {
+  padding: 12px 20px;
+  border-top: 1px solid var(--vscode-editorGroup-border, transparent);
+}
+
+#errors.hidden {
+  display: none;
+}
+
+.error-title {
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.error-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.error-list li {
+  margin-bottom: 4px;
+}
+
+.empty-state {
+  margin: 0;
+  font-style: italic;
+  opacity: 0.7;
+}

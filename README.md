@@ -7,6 +7,7 @@ Render plain-text `.drakon` diagrams as interactive visuals inside VS Code.
 - Associates `.drakon` files with a custom editor that renders a live diagram.
 - Parses a small text DSL to define nodes and edges.
 - Shows parsing errors inline and updates instantly as you type.
+- **Export diagrams** as SVG, PNG, or WebP files with a single click.
 
 ## Text DSL
 
@@ -31,6 +32,16 @@ Every icon has a dedicated reference document with exhaustive variants and DSL e
 > }
 > ```
 > ````
+
+## Exporting Diagrams
+
+When viewing a `.drakon` file, you'll see export buttons at the top of the editor:
+
+- **SVG** - Export as scalable vector graphics (ideal for further editing)
+- **PNG** - Export as high-resolution raster image (2x scale for clarity)
+- **WebP** - Export as WebP format (smaller file size with good quality)
+
+Click any export button and the save dialog will open in the same directory as your `.drakon` file, with a suggested filename matching your diagram name.
 
 ## Development
 
