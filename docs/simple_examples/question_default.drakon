@@ -1,0 +1,18 @@
+drakon "Question Example"
+{
+  question "got_something"
+  {
+    text = "Got something?"
+    no =
+    {
+      action "get_something"
+      {
+        text = "Get something"
+      }
+    }
+  }
+  action "do_something"
+  {
+    text = "Do something"
+  }
+}

@@ -254,7 +254,6 @@ main {
 .edge-label {
   font-size: 12px;
   fill: #2c3e50;
-  text-anchor: middle;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;

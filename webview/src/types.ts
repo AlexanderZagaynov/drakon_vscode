@@ -62,26 +62,16 @@ export interface DiagramEdge {
 export interface DiagramNode {
   id: string;
   type: string;
-  lane: string;
+  column: number;
   label: string;
   attributes: Record<string, unknown>;
   block: BlockStatement;
   geometry?: NodeGeometry;
 }
 
-export interface Lane {
-  id: string;
-  title: string;
-  tags: string[];
-  nodes: DiagramNode[];
-  raw: BlockStatement;
-  implicit: boolean;
-}
-
 export interface Diagram {
   title: string;
   metadata: Record<string, unknown>;
-  lanes: Lane[];
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   attachments: DiagramAttachment[];
@@ -134,23 +124,6 @@ export interface LayoutConfig {
   laneSpacing: number;
 }
 
-export interface LaneNodeEntry {
-  node: DiagramNode;
-  order: number;
-}
-
-export interface LaneLayout {
-  id: string;
-  title: string;
-  x: number;
-  width: number;
-  implicit: boolean;
-  nodes: LaneNodeEntry[];
-  totalHeight?: number;
-  innerTop?: number;
-  innerBottom?: number;
-}
-
 export interface Point {
   x: number;
   y: number;
@@ -159,6 +132,6 @@ export interface Point {
 export interface LayoutResult {
   width: number;
   height: number;
-  lanes: LaneLayout[];
   positions: Map<string, Point>;
+  columns: Map<number, { x: number; width: number }>;
 }

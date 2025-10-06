@@ -1,12 +1,4 @@
-import type {
-  Diagram,
-  LayoutResult,
-  LayoutConfig,
-  NodeGeometry,
-  DiagramNode,
-  LaneLayout,
-  LaneNodeEntry
-} from './types.js';
+import type { Diagram, LayoutResult, LayoutConfig, NodeGeometry, DiagramNode } from './types.js';
 import { getNodeSpec } from './shapes/index.js';
 import { baseAnchor } from './shared.js';
 import { wrapLabelText } from './text.js';
@@ -59,26 +51,27 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   const laneTop = LAYOUT.laneTopMargin;
   const laneLeft = LAYOUT.laneLeftMargin;
 
-  const lanes = diagram.lanes.length
-    ? diagram.lanes.map((lane) => ({ id: lane.id, title: lane.title ?? lane.id, implicit: lane.implicit }))
-    : [{ id: 'main', title: 'Main', implicit: true }];
-
-  const laneNodesMap = new Map<string, LaneNodeEntry[]>(
-    lanes.map((lane) => [lane.id, [] as LaneNodeEntry[]])
-  );
-
-  diagram.nodes.forEach((node, index) => {
-    if (!laneNodesMap.has(node.lane)) {
-      lanes.push({ id: node.lane, title: node.lane, implicit: false });
-      laneNodesMap.set(node.lane, []);
-    }
-    const entry: LaneNodeEntry = { node, order: index };
-    laneNodesMap.get(node.lane)?.push(entry);
-  });
-
   const depths = computeDepths(diagram);
 
-  laneNodesMap.forEach((entries) => {
+  const columnEntries = new Map<number, { node: DiagramNode; order: number }[]>();
+  diagram.nodes.forEach((node, index) => {
+    const column = Number.isFinite(node.column) ? (node.column as number) : 0;
+    if (!columnEntries.has(column)) {
+      columnEntries.set(column, []);
+    }
+    columnEntries.get(column)?.push({ node, order: index });
+  });
+
+  if (!columnEntries.size) {
+    columnEntries.set(0, []);
+  }
+
+  const sortedColumns = Array.from(columnEntries.keys()).sort((a, b) => a - b);
+  const columnLayouts = new Map<number, { x: number; width: number }>();
+  let currentX = laneLeft;
+
+  sortedColumns.forEach((column) => {
+    const entries = columnEntries.get(column) ?? [];
     entries.sort((a, b) => {
       const depthDiff = (depths.get(a.node.id) ?? 0) - (depths.get(b.node.id) ?? 0);
       if (depthDiff !== 0) {
@@ -86,18 +79,11 @@ export function buildLayout(diagram: Diagram): LayoutResult {
       }
       return a.order - b.order;
     });
-  });
-
-  const laneLayouts: LaneLayout[] = [];
-  let currentX = laneLeft;
-
-  lanes.forEach((lane) => {
-    const nodes = laneNodesMap.get(lane.id) ?? [];
-    const maxNodeWidth = nodes.reduce((acc, entry) => Math.max(acc, entry.node.geometry?.width ?? 220), 220);
-    const laneWidth = Math.max(maxNodeWidth + LAYOUT.lanePadding, 260);
-    const centerX = currentX + laneWidth / 2;
-    laneLayouts.push({ id: lane.id, title: lane.title, x: centerX, width: laneWidth, nodes, implicit: lane.implicit });
-    currentX += laneWidth + laneGap;
+    const maxNodeWidth = entries.reduce((acc, entry) => Math.max(acc, entry.node.geometry?.width ?? 220), 220);
+    const columnWidth = Math.max(maxNodeWidth + LAYOUT.lanePadding, 260);
+    const centerX = currentX + columnWidth / 2;
+    columnLayouts.set(column, { x: centerX, width: columnWidth });
+    currentX += columnWidth + laneGap;
   });
 
   const defaultHeight = 170;
@@ -138,18 +124,19 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   let globalTop = Number.POSITIVE_INFINITY;
   let globalBottom = laneTop;
 
-  laneLayouts.forEach((lane) => {
-    lane.nodes.forEach(({ node }) => {
+  sortedColumns.forEach((column) => {
+    const entries = columnEntries.get(column) ?? [];
+    const columnX = columnLayouts.get(column)?.x ?? laneLeft;
+    entries.forEach(({ node }) => {
       const depth = depths.get(node.id) ?? 0;
       const centerY = levelCenters.get(depth) ?? fallbackCenter;
       const height = node.geometry?.height ?? defaultHeight;
-      positions.set(node.id, { x: lane.x, y: centerY });
+      positions.set(node.id, { x: columnX, y: centerY });
       const top = centerY - height / 2;
       const bottom = centerY + height / 2;
       globalTop = Math.min(globalTop, top);
       globalBottom = Math.max(globalBottom, bottom);
     });
-    lane.totalHeight = cursorY;
   });
 
   if (!Number.isFinite(globalTop)) {
@@ -165,22 +152,6 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     edge.toBase = edge.toBase ?? baseAnchor(edge.to);
   });
 
-  laneLayouts.forEach((lane) => {
-    const contentNodes = lane.nodes.filter(
-      (entry) => entry.node.type !== 'start' && entry.node.type !== 'end' && entry.node.type !== 'parameters'
-    );
-    if (contentNodes.length) {
-      const firstNode = contentNodes[0].node;
-      const lastNode = contentNodes[contentNodes.length - 1].node;
-      const firstPos = positions.get(firstNode.id);
-      const lastPos = positions.get(lastNode.id);
-      if (firstPos && lastPos) {
-        lane.innerTop = firstPos.y - (firstNode.geometry?.height ?? 0) / 2;
-        lane.innerBottom = lastPos.y + (lastNode.geometry?.height ?? 0) / 2;
-      }
-    }
-  });
-
   const startNode = diagram.nodes.find((node) => node.type === 'start');
   const parametersNode = diagram.nodes.find((node) => node.type === 'parameters');
   if (startNode && parametersNode) {
@@ -191,7 +162,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     }
   }
 
-  return { width: totalWidth, height: totalHeight, lanes: laneLayouts, positions };
+  return { width: totalWidth, height: totalHeight, positions, columns: columnLayouts };
 }
 
 function computeDepths(diagram: Diagram): Map<string, number> {
