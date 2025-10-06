@@ -1,4 +1,12 @@
-import type { Diagram, Statement, BlockStatement, DiagramNode, DiagramEdge, Lane } from './types.js';
+import type {
+  Diagram,
+  Statement,
+  BlockStatement,
+  DiagramNode,
+  DiagramEdge,
+  Lane,
+  AttributeStatement
+} from './types.js';
 import { baseAnchor } from './shared.js';
 
 interface SplitResult {
@@ -7,15 +15,11 @@ interface SplitResult {
 }
 
 function splitStatements(items: Statement[]): SplitResult {
-  const attributes: Record<string, unknown> = {};
-  const blocks: BlockStatement[] = [];
-  items.forEach((item) => {
-    if (item.type === 'attribute') {
-      attributes[item.key] = item.value;
-    } else if (item.type === 'block') {
-      blocks.push(item);
-    }
-  });
+  const grouped = Map.groupBy(items, (item) => item.type);
+  const attributesEntries =
+    (grouped.get('attribute') as AttributeStatement[] | undefined)?.map(({ key, value }) => [key, value]) ?? [];
+  const attributes = Object.fromEntries(attributesEntries);
+  const blocks = (grouped.get('block') as BlockStatement[] | undefined) ?? [];
   return { attributes, blocks };
 }
 

@@ -103,11 +103,12 @@ async function rasterizeSvg(
   image.decoding = 'async';
   image.crossOrigin = 'anonymous';
 
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = (event) => reject(new Error(`Failed to load SVG for export: ${String(event)}`));
-    image.src = svgDataUrl;
-  });
+  const { promise: imageLoaded, resolve, reject } = Promise.withResolvers<void>();
+  image.onload = () => resolve();
+  image.onerror = (event) => reject(new Error(`Failed to load SVG for export: ${String(event)}`));
+  image.src = svgDataUrl;
+
+  await imageLoaded;
 
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 

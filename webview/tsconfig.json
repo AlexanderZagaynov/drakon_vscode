@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
     "module": "es2020",
-    "target": "es2020",
+    "target": "es2024",
     "outDir": "../assets/js",
     "rootDir": "./src",
-    "lib": ["dom", "es2020"],
+    "lib": ["dom", "es2024"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
