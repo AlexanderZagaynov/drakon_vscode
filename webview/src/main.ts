@@ -1,7 +1,18 @@
 import { renderDocument } from './renderer.js';
 import { exportDiagram } from './exporters.js';
 
-const vscode = acquireVsCodeApi();
+function getWebviewApi(): WebviewApi {
+  if (typeof acquireVsCodeApi === 'function') {
+    return acquireVsCodeApi();
+  }
+  return {
+    postMessage: () => {
+      /* no-op for non-VS Code harnesses */
+    }
+  };
+}
+
+const vscode = getWebviewApi();
 const diagramEl = document.getElementById('diagram');
 const errorsEl = document.getElementById('errors');
 const exportSvgButton = document.getElementById('export-svg');

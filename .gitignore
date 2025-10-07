@@ -78,6 +78,9 @@ web_modules/
 .next
 out
 assets/js/
+playwright-report/
+test-results/
+blob-report/
 
 # Nuxt.js build / generate output
 .nuxt

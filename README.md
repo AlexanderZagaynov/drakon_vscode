@@ -56,6 +56,11 @@ npm run watch
 
 Press `F5` to launch a new VS Code instance with the extension loaded.
 
+## Tests
+
+- `npm run test:e2e` compiles the webview bundle and runs the Playwright harness against the simple `.drakon` samples.
+- Run `npx playwright install` once to download the browsers required for the tests.
+
 ## License
 
 MIT

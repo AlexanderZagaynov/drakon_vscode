@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DRAKON Webview Harness</title>
+    <link rel="stylesheet" href="../../../assets/styles.css" />
+    <script>
+      (function () {
+        const messages = [];
+        window.__playwrightMessages = messages;
+        function createApi() {
+          return {
+            postMessage: (message) => {
+              messages.push(message);
+            }
+          };
+        }
+        const apiFactory = () => createApi();
+        window.acquireVsCodeApi = apiFactory;
+        if (typeof globalThis !== 'undefined') {
+          globalThis.acquireVsCodeApi = apiFactory;
+        }
+      })();
+    </script>
+    <script src="../../../assets/d3.v7.min.js"></script>
+  </head>
+  <body>
+    <main>
+      <div id="toolbar">
+        <div class="toolbar-group">
+          <span class="toolbar-label">Export:</span>
+          <button class="export-btn" id="export-svg" type="button">SVG</button>
+          <button class="export-btn" id="export-png" type="button">PNG</button>
+          <button class="export-btn" id="export-webp" type="button">WebP</button>
+        </div>
+      </div>
+      <section id="diagram-container">
+        <div id="diagram" aria-label="DRAKON diagram"></div>
+      </section>
+      <section id="errors" class="hidden" aria-live="polite"></section>
+    </main>
+    <script type="module" src="../../../assets/js/main.js"></script>
+  </body>
+</html>
