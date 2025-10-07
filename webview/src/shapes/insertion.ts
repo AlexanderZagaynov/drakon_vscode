@@ -11,17 +11,23 @@ import {
 
 function drawInsertionShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   drawRoundedRectangle(group, width, height, node);
-  const inset = Math.min(8, width * 0.035);
-  const innerRadius = Math.min(8, Math.min(width, height) / 12);
-  group
-    .append('rect')
-    .attr('class', 'node-inset')
-    .attr('x', -width / 2 + inset)
-    .attr('y', -height / 2 + inset)
-    .attr('width', width - inset * 2)
-    .attr('height', height - inset * 2)
-    .attr('rx', innerRadius)
-    .attr('ry', innerRadius);
+  const offset = Math.min(width * 0.12, 18);
+  const padding = Math.min(height * 0.12, 12);
+  const top = -height / 2 + padding;
+  const bottom = height / 2 - padding;
+
+  const leftX = -width / 2 + offset;
+  const rightX = width / 2 - offset;
+
+  [leftX, rightX].forEach((x) => {
+    group
+      .append('line')
+      .attr('class', 'node-inset-line')
+      .attr('x1', x)
+      .attr('x2', x)
+      .attr('y1', top)
+      .attr('y2', bottom);
+  });
 }
 
 export const insertionSpec: NodeSpec = {

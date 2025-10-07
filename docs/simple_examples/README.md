@@ -8,6 +8,7 @@ The `.drakon` snippets in this directory act as focused smoke tests for the rend
 - [`comment.drakon`](./comment.drakon) – standalone comment balloon with multiline text.
 - [`empty.drakon`](./empty.drakon) – minimal diagram skeleton used for parser sanity checks.
 - [`parameters.drakon`](./parameters.drakon) – illustrates the `parameters` attribute and automatic anchor wiring.
+- [`insertion.drakon`](./insertion.drakon) – external flow call using the insertion icon to trigger `Publish report`.
 - [`question_default.drakon`](./question_default.drakon) – question icon with an explicit branch and default fall-through.
 - [`question_empty.drakon`](./question_empty.drakon) – question icon with an empty branch showing automatic connector labelling.
 - [`question_reverse.drakon`](./question_reverse.drakon) – question icon with the `yes` branch routed into a side lane.

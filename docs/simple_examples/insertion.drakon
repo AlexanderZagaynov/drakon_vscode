@@ -1,0 +1,7 @@
+drakon "Insertion Example"
+{
+  insertion "publish_report"
+  {
+    text = "Publish report"
+  }
+}
