@@ -8,6 +8,7 @@ import { parametersSpec } from './parameters.js';
 import { commentSpec } from './comment.js';
 import { questionSpec } from './question.js';
 import { choiceSpec } from './choice.js';
+import { choiceCaseSpec } from './choice_case.js';
 import { insertionSpec } from './insertion.js';
 import { forEachSpec } from './for_each.js';
 import { parallelSpec } from './parallel.js';
@@ -33,6 +34,8 @@ const NODE_LIBRARY: Record<string, NodeSpec> = {
   comment: commentSpec,
   question: questionSpec,
   choice: choiceSpec,
+  choice_case: choiceCaseSpec,
+  choice_else: choiceCaseSpec,
   insertion: insertionSpec,
   for_each: forEachSpec,
   parallel: parallelSpec,

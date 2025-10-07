@@ -18,6 +18,17 @@ interface QuestionBranchInfo {
   nextResolved?: { full: string; base: string };
 }
 
+interface ChoiceCaseRecord {
+  id: string;
+  label: string;
+  kind: 'case' | 'else';
+  branchStartId: string | null;
+  branchEndId: string | null;
+  direct: boolean;
+  nextRaw?: string;
+  nextResolved?: { full: string; base: string };
+}
+
 function splitStatements(items: Statement[]): SplitResult {
   const grouped = Map.groupBy(items, (item) => item.type);
   const attributesEntries =
@@ -125,6 +136,8 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
   const columnNodes = new Map<number, DiagramNode[]>();
   const laneColumn = new Map<string, number>();
   const questionBranchInfo = new Map<string, QuestionBranchInfo>();
+  const choiceCaseInfo = new Map<string, ChoiceCaseRecord[]>();
+  const choiceNextRaw = new Map<string, string>();
   let nextColumnIndex = 0;
 
   const ensureColumn = (column: number) => {
@@ -252,6 +265,8 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     }
     if (block.name === 'question') {
       processQuestionBranches(column, node, nodeParts.attributes);
+    } else if (block.name === 'choice') {
+      processChoiceCases(column, node, nodeParts.attributes, nodeParts.blocks ?? []);
     }
     return node;
   }
@@ -383,6 +398,76 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
       start: branchStart.id,
       end: branchEnd.id
     };
+  }
+
+  function processChoiceCases(
+    column: number,
+    node: DiagramNode,
+    attributes: Record<string, unknown>,
+    blocks: BlockStatement[]
+  ): void {
+    const nextAttr = typeof attributes.next === 'string' ? attributes.next.trim() : '';
+    if (nextAttr) {
+      choiceNextRaw.set(node.id, nextAttr);
+    }
+
+    const cases: ChoiceCaseRecord[] = [];
+
+    blocks.forEach((block, index) => {
+      if (block.name !== 'case' && block.name !== 'else') {
+        createColumnNode(column, block);
+        return;
+      }
+
+      const caseParts = splitStatements(block.body);
+      const caseId = block.labels[0] ?? `${node.id}_${block.name}_${cases.length + 1}`;
+      const caseLabel = deriveLabel(caseParts.attributes, caseId);
+      const branchColumn = index === 0 ? column : allocateColumn();
+
+      const caseNode: DiagramNode = {
+        id: caseId,
+        type: block.name === 'case' ? 'choice_case' : 'choice_else',
+        column: branchColumn,
+        label: caseLabel,
+        attributes: caseParts.attributes,
+        block
+      };
+
+      if (!registerNode(branchColumn, caseNode)) {
+        return;
+      }
+
+      const nestedBlocks = caseParts.blocks;
+      let firstChildId: string | null = null;
+      let lastChildId: string | null = caseNode.id;
+
+      nestedBlocks.forEach((child) => {
+        const childNode = createColumnNode(branchColumn, child);
+        if (!childNode) {
+          return;
+        }
+        if (!firstChildId) {
+          firstChildId = childNode.id;
+        }
+        lastChildId = childNode.id;
+      });
+
+      const caseNextAttr = typeof caseParts.attributes.next === 'string' ? caseParts.attributes.next.trim() : '';
+
+      cases.push({
+        id: caseNode.id,
+        label: caseLabel,
+        kind: block.name === 'case' ? 'case' : 'else',
+        branchStartId: firstChildId,
+        branchEndId: lastChildId,
+        direct: !firstChildId,
+        nextRaw: caseNextAttr || undefined
+      });
+    });
+
+    if (cases.length) {
+      choiceCaseInfo.set(node.id, cases);
+    }
   }
 
   const resolveParametersValue = (
@@ -746,11 +831,33 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     }
   });
 
+  const choiceNextResolved = new Map<string, { full: string; base: string }>();
+  choiceNextRaw.forEach((raw, choiceId) => {
+    const resolved = resolveReference(raw, `Choice "${choiceId}" next`);
+    if (resolved) {
+      choiceNextResolved.set(choiceId, resolved);
+    }
+  });
+
+  choiceCaseInfo.forEach((records) => {
+    records.forEach((record) => {
+      if (record.nextRaw) {
+        const resolved = resolveReference(record.nextRaw, `Case "${record.id}" next`);
+        if (resolved) {
+          record.nextResolved = resolved;
+        }
+      }
+    });
+  });
+
   columnNodes.forEach((nodes) => {
     for (let index = 0; index < nodes.length - 1; index += 1) {
       const fromNode = nodes[index];
       const toNode = nodes[index + 1];
-      if (fromNode.type === 'question' && questionBranchInfo.has(fromNode.id)) {
+      if (
+        (fromNode.type === 'question' && questionBranchInfo.has(fromNode.id)) ||
+        (fromNode.type === 'choice' && choiceCaseInfo.has(fromNode.id))
+      ) {
         continue;
       }
       const key = `${fromNode.id}>${toNode.id}`;
@@ -836,6 +943,76 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
       toBase: targetBase
     });
     explicitEdgeSet.add(rejoinKey);
+  });
+
+  choiceCaseInfo.forEach((records, choiceId) => {
+    const defaultTarget = choiceNextResolved.get(choiceId);
+    const fallbackTarget = defaultTarget ?? (defaultEndId ? { full: defaultEndId, base: defaultEndId } : undefined);
+
+    records.forEach((record) => {
+      const branchEdgeKey = `${choiceId}>${record.id}`;
+      if (!explicitEdgeSet.has(branchEdgeKey)) {
+        diagram.edges.push({
+          from: choiceId,
+          to: record.id,
+          kind: record.kind,
+          label: '',
+          note: '',
+          handle: '',
+          attributes: { implicit: true, branch: record.kind, branch_case: true },
+          fromBase: choiceId,
+          toBase: record.id
+        });
+        explicitEdgeSet.add(branchEdgeKey);
+      }
+
+      const resolvedTarget = record.nextResolved ?? fallbackTarget;
+      if (!resolvedTarget) {
+        return;
+      }
+
+      if (record.direct) {
+        const directKey = `${record.id}>${resolvedTarget.base}`;
+        if (!explicitEdgeSet.has(directKey)) {
+          diagram.edges.push({
+            from: record.id,
+            to: resolvedTarget.full,
+            kind: record.kind,
+            label: '',
+            note: '',
+            handle: '',
+            attributes: { implicit: true, branch: record.kind, branch_direct: true },
+            fromBase: record.id,
+            toBase: resolvedTarget.base
+          });
+          explicitEdgeSet.add(directKey);
+        }
+        return;
+      }
+
+      const branchEnd = record.branchEndId;
+      if (!branchEnd || branchEnd === resolvedTarget.base) {
+        return;
+      }
+
+      const rejoinKeyCase = `${branchEnd}>${resolvedTarget.base}`;
+      if (explicitEdgeSet.has(rejoinKeyCase)) {
+        return;
+      }
+
+      diagram.edges.push({
+        from: branchEnd,
+        to: resolvedTarget.full,
+        kind: 'main',
+        label: '',
+        note: '',
+        handle: '',
+        attributes: { implicit: true, branch: record.kind, rejoin: true },
+        fromBase: branchEnd,
+        toBase: resolvedTarget.base
+      });
+      explicitEdgeSet.add(rejoinKeyCase);
+    });
   });
 
   diagram.edges.forEach((edge) => {

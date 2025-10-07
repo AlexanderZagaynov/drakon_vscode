@@ -1,0 +1,29 @@
+drakon "Choice Example"
+{
+  choice "favorite_fruit"
+  {
+    text = "What is your favorite fruit?"
+    case "apples"
+    {
+      text = "Apples"
+      action "share_apples"
+      {
+        text = "Hand over an apple"
+      }
+    }
+    case "oranges"
+    {
+      text = "Oranges"
+    }
+    else
+    {
+      text = "Something else"
+    }
+    next = "survey_end"
+  }
+
+  action "survey_end"
+  {
+    text = "Thanks for sharing!"
+  }
+}

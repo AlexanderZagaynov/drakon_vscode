@@ -10,14 +10,12 @@ import {
 } from './constants.js';
 
 function drawChoiceShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
-  const indent = Math.min(width * 0.2, 56);
+  const skew = Math.min(width * 0.18, 42);
   const path = d3.path();
-  path.moveTo(-width / 2 + indent, -height / 2);
-  path.lineTo(width / 2 - indent, -height / 2);
-  path.lineTo(width / 2, 0);
-  path.lineTo(width / 2 - indent, height / 2);
-  path.lineTo(-width / 2 + indent, height / 2);
-  path.lineTo(-width / 2, 0);
+  path.moveTo(-width / 2 + skew, -height / 2);
+  path.lineTo(width / 2, -height / 2);
+  path.lineTo(width / 2 - skew, height / 2);
+  path.lineTo(-width / 2, height / 2);
   path.closePath();
   group
     .append('path')

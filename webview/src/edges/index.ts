@@ -65,18 +65,36 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
   const y2 = to.y;
   const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
 
+  if (attrs.branch_case) {
+    const fromNode = nodeById.get(edge.fromBase ?? edge.from);
+    const fromHeight = fromNode?.geometry?.height ?? 0;
+    const toNode = nodeById.get(edge.toBase ?? edge.to);
+    const targetHeight = toNode?.geometry?.height ?? 0;
+    const baseY = y1 + fromHeight / 2;
+    const targetTop = y2 - targetHeight / 2;
+    const midY = (baseY + targetTop) / 2;
+    return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+  }
+
   // Direct branches (empty "No" lanes) first step sideways, then down, then back.
   if (attrs.branch_direct) {
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
-    const fromWidth = fromNode?.geometry?.width ?? 0;
     const toNode = nodeById.get(edge.toBase ?? edge.to);
     const targetHeight = toNode?.geometry?.height ?? 0;
-    const horizontalOffset = fromWidth / 2 + LAYOUT.laneGap / 2;
-    const outerX = x1 + horizontalOffset;
     const targetTop = y2 - targetHeight / 2;
     const clearance = Math.max(40, targetHeight / 3);
     const joinCandidate = Math.min(targetTop - clearance, y2 - clearance);
     const joinY = Math.min(Math.max(joinCandidate, y1 + clearance / 2), y2 - 8);
+
+    if (fromNode && (fromNode.type === 'choice_case' || fromNode.type === 'choice_else')) {
+      const fromHeight = fromNode.geometry?.height ?? 0;
+      const baseY = y1 + fromHeight / 2;
+      return `M ${x1} ${y1} L ${x1} ${baseY} L ${x1} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
+    }
+
+    const fromWidth = fromNode?.geometry?.width ?? 0;
+    const horizontalOffset = fromWidth / 2 + LAYOUT.laneGap / 2;
+    const outerX = x1 + horizontalOffset;
     return `M ${x1} ${y1} L ${outerX} ${y1} L ${outerX} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
   }
 
