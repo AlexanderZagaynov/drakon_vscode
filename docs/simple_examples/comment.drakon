@@ -1,0 +1,8 @@
+drakon "Comment Example"
+{
+  comment "comment_1" {
+    text = <<-TEXT
+      random comment text
+    TEXT
+  }
+}

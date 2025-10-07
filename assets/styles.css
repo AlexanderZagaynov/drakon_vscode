@@ -125,8 +125,12 @@ main {
   stroke-width: 2;
 }
 
-.node-shape.comment {
+.node-shape.comment.comment-outer {
   fill: #d0d0d0;
+}
+
+.comment-inner {
+  fill: #ffffff;
 }
 
 .node-shape.choice {
@@ -219,8 +223,9 @@ main {
 }
 
 .node.comment .node-shape.comment,
+.node.comment .comment-outer,
 .node.note .node-shape.comment {
-  fill: color-mix(in srgb, var(--vscode-editor-background) 85%, #90caf9);
+  fill: #d0d0d0;
 }
 
 .node-divider {
