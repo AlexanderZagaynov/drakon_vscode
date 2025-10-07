@@ -208,33 +208,42 @@ test.describe('simple examples', () => {
     const source = readFileSync(path.join(examplesDir, file), 'utf-8');
 
     test(`renders ${file} without errors`, async ({ page }) => {
-      await page.goto(harnessUrl);
-      await page.waitForLoadState('domcontentloaded');
-
-      await page.waitForFunction(() => {
-        const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
-        return Array.isArray(win.__playwrightMessages) && win.__playwrightMessages.some((msg) => msg?.type === 'ready');
+      await test.step('boot harness', async () => {
+        await page.goto(harnessUrl);
+        await page.waitForLoadState('domcontentloaded');
+        await expect
+          .poll(async () =>
+            page.evaluate(() => {
+              const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
+              return Array.isArray(win.__playwrightMessages) && win.__playwrightMessages.some((msg) => msg?.type === 'ready');
+            })
+          )
+          .toBeTruthy();
+        await page.evaluate(() => {
+          const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
+          if (Array.isArray(win.__playwrightMessages)) {
+            win.__playwrightMessages.splice(0);
+          } else {
+            win.__playwrightMessages = [];
+          }
+        });
       });
 
-      await page.evaluate(() => {
-        const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
-        if (Array.isArray(win.__playwrightMessages)) {
-          win.__playwrightMessages.splice(0);
-        } else {
-          win.__playwrightMessages = [];
-        }
-      });
-
-      await page.evaluate((diagramSource) => {
-        window.postMessage({ type: 'update', text: diagramSource }, '*');
-      }, source);
-
-      await page.waitForFunction(() => {
-        const container = document.getElementById('diagram');
-        if (!container) {
-          return false;
-        }
-        return Boolean(container.querySelector('svg') || container.querySelector('.empty-state'));
+      await test.step('render diagram', async () => {
+        await page.evaluate((diagramSource) => {
+          window.postMessage({ type: 'update', text: diagramSource }, '*');
+        }, source);
+        await expect
+          .poll(async () =>
+            page.evaluate(() => {
+              const container = document.getElementById('diagram');
+              if (!container) {
+                return false;
+              }
+              return Boolean(container.querySelector('svg') || container.querySelector('.empty-state'));
+            })
+          )
+          .toBeTruthy();
       });
 
       const svgLocator = page.locator('svg');
@@ -250,18 +259,24 @@ test.describe('simple examples', () => {
       await expect(page.locator('#errors')).toHaveClass(/hidden/);
 
       if (hasSvg) {
-        await page.evaluate(() => {
-          const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
-          if (Array.isArray(win.__playwrightMessages)) {
-            win.__playwrightMessages.splice(0);
-          } else {
-            win.__playwrightMessages = [];
-          }
-        });
-        await page.click('#export-svg');
-        await page.waitForFunction(() => {
-          const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
-          return win.__playwrightMessages?.some((msg) => msg?.type === 'export' && msg.format === 'svg');
+        await test.step('export snapshot', async () => {
+          await page.evaluate(() => {
+            const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
+            if (Array.isArray(win.__playwrightMessages)) {
+              win.__playwrightMessages.splice(0);
+            } else {
+              win.__playwrightMessages = [];
+            }
+          });
+          await page.getByRole('button', { name: 'SVG' }).click();
+          await expect
+            .poll(async () =>
+              page.evaluate(() => {
+                const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
+                return win.__playwrightMessages?.some((msg) => msg?.type === 'export' && msg.format === 'svg');
+              })
+            )
+            .toBeTruthy();
         });
         const exportMessage = await page.evaluate(() => {
           const win = window as typeof window & { __playwrightMessages?: HarnessMessage[] };
