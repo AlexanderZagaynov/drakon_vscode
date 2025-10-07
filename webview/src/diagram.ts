@@ -1,5 +1,5 @@
 import type { Diagram, Statement, BlockStatement, DiagramNode, DiagramEdge, AttributeStatement } from './types.js';
-import { baseAnchor } from './shared.js';
+import { baseAnchor, normalizeMultilineText } from './shared.js';
 
 interface SplitResult {
   attributes: Record<string, unknown>;
@@ -56,35 +56,6 @@ function toArray(value: unknown): string[] {
     return [value];
   }
   return [];
-}
-
-function normalizeMultilineString(value: string): string {
-  const normalized = value.replace(/\r/g, '');
-  let lines = normalized.split('\n');
-  while (lines.length && lines[0]?.trim() === '') {
-    lines.shift();
-  }
-  while (lines.length && lines[lines.length - 1]?.trim() === '') {
-    lines.pop();
-  }
-  if (!lines.length) {
-    return '';
-  }
-  const indent = lines.reduce<number>(
-    (acc, line) => {
-      if (!line.trim()) {
-        return acc;
-      }
-      const match = line.match(/^(\s*)/);
-      const leading = match ? match[0].length : 0;
-      return acc === -1 ? leading : Math.min(acc, leading);
-    },
-    -1
-  );
-  if (indent > 0) {
-    lines = lines.map((line) => line.slice(Math.min(indent, line.length)));
-  }
-  return lines.join('\n');
 }
 
 function formatParameterScalar(value: unknown): string {
@@ -488,7 +459,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
         attributes.anchor = `${diagramAnchorBase}@parameters`;
       }
       if (typeof attributes.text === 'string') {
-        attributes.text = normalizeMultilineString(attributes.text);
+        attributes.text = normalizeMultilineText(attributes.text);
       }
       if (Array.isArray(attributes.lines)) {
         attributes.lines = (attributes.lines as unknown[]).map((entry) => String(entry));
@@ -497,7 +468,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     };
 
     if (typeof value === 'string') {
-      const text = normalizeMultilineString(value);
+      const text = normalizeMultilineText(value);
       const label = text || 'Parameters';
       return { id: defaultId, label, attributes: ensureAttributes({ text: label }) };
     }
@@ -513,7 +484,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
       const config: Record<string, unknown> = {};
       Object.entries(source).forEach(([key, entry]) => {
         if (typeof entry === 'string' && (key === 'text' || key === 'title' || key === 'caption')) {
-          config[key] = normalizeMultilineString(entry);
+          config[key] = normalizeMultilineText(entry);
         } else if (Array.isArray(entry)) {
           config[key] = entry.map((element) => String(element));
         } else {
@@ -558,7 +529,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     }
 
     const text = String(value);
-    const normalized = normalizeMultilineString(text);
+    const normalized = normalizeMultilineText(text);
     const label = normalized || 'Parameters';
     return { id: defaultId, label, attributes: ensureAttributes({ text: label }) };
   };

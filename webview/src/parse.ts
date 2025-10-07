@@ -1,33 +1,5 @@
+import { normalizeMultilineText } from './shared.js';
 import type { Token, TokenType, Statement, AttributeStatement, BlockStatement } from './types.js';
-
-function normalizeHeredoc(value: string): string {
-  const normalized = value.replace(/\r/g, '');
-  let lines = normalized.split('\n');
-  while (lines.length && lines[0]?.trim() === '') {
-    lines.shift();
-  }
-  while (lines.length && lines[lines.length - 1]?.trim() === '') {
-    lines.pop();
-  }
-  if (!lines.length) {
-    return '';
-  }
-  const indent = lines.reduce<number>(
-    (acc, line) => {
-      if (!line.trim()) {
-        return acc;
-      }
-      const match = line.match(/^(\s*)/);
-      const leading = match ? match[0].length : 0;
-      return acc === -1 ? leading : Math.min(acc, leading);
-    },
-    -1
-  );
-  if (indent > 0) {
-    lines = lines.map((line) => line.slice(Math.min(indent, line.length)));
-  }
-  return lines.join('\n');
-}
 
 export function tokenize(input: string, errors: string[]): Token[] {
   const tokens: Token[] = [];
@@ -131,7 +103,7 @@ export function tokenize(input: string, errors: string[]): Token[] {
       }
       let value = lines.join('\n');
       if (stripIndent) {
-        value = normalizeHeredoc(value);
+        value = normalizeMultilineText(value);
       }
       addToken('string', value, startLine, startColumn);
       continue;

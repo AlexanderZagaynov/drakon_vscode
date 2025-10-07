@@ -14,6 +14,7 @@ if (!(diagramEl instanceof HTMLElement) || !(errorsEl instanceof HTMLElement)) {
 
 const diagramContainer = diagramEl as HTMLElement;
 const errorsContainer = errorsEl as HTMLElement;
+let lastRenderedSource: string | null = null;
 
 const triggerExport = (format: 'svg' | 'png' | 'webp') => {
   exportDiagram(format, diagramContainer, vscode).catch((error) => {
@@ -38,7 +39,17 @@ type IncomingMessage = { type?: string; text?: string; format?: string };
 window.addEventListener('message', (event: MessageEvent<IncomingMessage>) => {
   const message = event.data;
   if (message?.type === 'update') {
-    renderDocument(message.text ?? '', diagramContainer, errorsContainer);
+    const nextSource = message.text ?? '';
+    if (nextSource === lastRenderedSource) {
+      return;
+    }
+    lastRenderedSource = nextSource;
+    try {
+      renderDocument(nextSource, diagramContainer, errorsContainer);
+    } catch (error) {
+      lastRenderedSource = null;
+      throw error;
+    }
   } else if (message?.type === 'exportCommand') {
     const format = message.format as 'svg' | 'png' | 'webp' | undefined;
     if (format) {

@@ -9,6 +9,10 @@ Render plain-text `.drakon` diagrams as interactive visuals inside VS Code.
 - Shows parsing errors inline and updates instantly as you type.
 - **Export diagrams** as SVG, PNG, or WebP files with a single click.
 
+## Sample Diagrams
+
+Start with the curated mini scenarios in [`docs/simple_examples`](docs/simple_examples/README.md); they cover the basic icons (action, question, choice, comment, parameters) and double as quick regression fixtures for the parser.
+
 ## Text DSL
 
 We are drafting a rich text DSL that mirrors the official DRAKON icon set (Action, Question, Choice, Duration, Timer, etc.). The full proposal, including grammar, block keywords, connector options, and an end-to-end example, lives in [`docs/dsl-spec.md`](docs/dsl-spec.md).

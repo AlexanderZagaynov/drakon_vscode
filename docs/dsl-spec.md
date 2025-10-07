@@ -66,7 +66,7 @@ drakon "diagram-id" {
 ```
 
 - Block identifiers are quoted strings so punctuation and spaces are allowed; they must still be unique within a diagram.
-- `text` supplies the primary label. Use `lines` (list of strings), a heredoc (`text = <<-EOT … EOT`), or omit it entirely for icon-specific defaults.
+- `text` supplies the primary label. Use `lines` (list of strings), a heredoc (`text = <<-EOT … EOT`), or omit it entirely for icon-specific defaults. Leading indentation is stripped from heredocs and other multiline strings so the rendered label stays tight.
 - `tags` captures arbitrary labels for search and theming.
 - `anchor` exposes a named attachment point for lines (defaults to the block id).
 - `data` is a free-form map for renderer extensions and tooling.
