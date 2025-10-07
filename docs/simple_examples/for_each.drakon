@@ -1,0 +1,11 @@
+drakon "For Each Example"
+{
+  for_each "each_person"
+  {
+    text = "For each person in the room"
+    action "shake_hands"
+    {
+      text = "Shake hands"
+    }
+  }
+}

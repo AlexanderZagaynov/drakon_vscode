@@ -7,6 +7,7 @@ The `.drakon` snippets in this directory act as focused smoke tests for the rend
 - [`choice.drakon`](./choice.drakon) – choice icon with named cases, an implicit `else`, and a `next` transition.
 - [`comment.drakon`](./comment.drakon) – standalone comment balloon with multiline text.
 - [`empty.drakon`](./empty.drakon) – minimal diagram skeleton used for parser sanity checks.
+- [`for_each.drakon`](./for_each.drakon) – loop over people in a room, paired with an action that runs for each item.
 - [`parameters.drakon`](./parameters.drakon) – illustrates the `parameters` attribute and automatic anchor wiring.
 - [`insertion.drakon`](./insertion.drakon) – external flow call using the insertion icon to trigger `Publish report`.
 - [`question_default.drakon`](./question_default.drakon) – question icon with an explicit branch and default fall-through.

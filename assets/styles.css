@@ -107,15 +107,16 @@ main {
 }
 
 .node-shape.action,
-.node-shape.for_each,
 .node-shape.parallel {
   fill: #f8f8f8;
 }
 
-.node-shape.action.loop_end {
-  fill: #f0ffd0;
+.node-shape.for_each {
+  fill: #f7f5c0;
 }
-
+.node-shape.loop_end {
+  fill: #f7f5c0;
+}
 .node-shape.parameters {
   fill: #ffffff;
 }
@@ -173,11 +174,6 @@ main {
 
 .node.recurse_partition .node-label {
   fill: #ffffff;
-}
-
-/* Light green for loop end marker */
-.node.loop_end .node-shape {
-  fill: #e8ffe8;
 }
 
 /* Darker nodes in recurse lane */

@@ -8,7 +8,7 @@ import {
   BASE_TEXT_PADDING_BOTTOM
 } from './constants.js';
 
-function drawForEachShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+function drawLoopEndShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   const bevel = Math.max(6, Math.min(halfWidth * 0.25, 14));
@@ -19,12 +19,12 @@ function drawForEachShape(group: NodeSelection, width: number, height: number, n
   const rightX = halfWidth;
 
   const pathData = [
-    `M ${leftX + bevel} ${topY}`,
-    `L ${rightX - bevel} ${topY}`,
-    `L ${rightX} ${topY + bevel}`,
-    `L ${rightX} ${bottomY}`,
-    `L ${leftX} ${bottomY}`,
-    `L ${leftX} ${topY + bevel}`,
+    `M ${leftX} ${topY}`,
+    `L ${rightX} ${topY}`,
+    `L ${rightX} ${bottomY - bevel}`,
+    `L ${rightX - bevel} ${bottomY}`,
+    `L ${leftX + bevel} ${bottomY}`,
+    `L ${leftX} ${bottomY - bevel}`,
     'Z'
   ].join(' ');
 
@@ -34,13 +34,11 @@ function drawForEachShape(group: NodeSelection, width: number, height: number, n
     .attr('d', pathData);
 }
 
-export const forEachSpec: NodeSpec = {
+export const loopEndSpec: NodeSpec = {
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (9 / 17),
   lineHeight: BASE_LINE_HEIGHT * (9 / 11),
   textPaddingTop: BASE_TEXT_PADDING_TOP * (3 / 7),
   textPaddingBottom: BASE_TEXT_PADDING_BOTTOM * (3 / 7),
-  draw: drawForEachShape
+  draw: drawLoopEndShape
 };
-
-export { drawForEachShape };

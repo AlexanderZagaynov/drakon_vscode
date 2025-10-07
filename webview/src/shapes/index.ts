@@ -11,6 +11,7 @@ import { choiceSpec } from './choice.js';
 import { choiceCaseSpec } from './choice_case.js';
 import { insertionSpec } from './insertion.js';
 import { forEachSpec } from './for_each.js';
+import { loopEndSpec } from './loop_end.js';
 import { parallelSpec } from './parallel.js';
 import { inputSpec } from './input.js';
 import { outputSpec } from './output.js';
@@ -38,6 +39,7 @@ const NODE_LIBRARY: Record<string, NodeSpec> = {
   choice_else: choiceCaseSpec,
   insertion: insertionSpec,
   for_each: forEachSpec,
+  loop_end: loopEndSpec,
   parallel: parallelSpec,
   input: inputSpec,
   output: outputSpec,

@@ -238,6 +238,8 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
       processQuestionBranches(column, node, nodeParts.attributes);
     } else if (block.name === 'choice') {
       processChoiceCases(column, node, nodeParts.attributes, nodeParts.blocks ?? []);
+    } else if (block.name === 'for_each') {
+      processForEachBody(column, node, nodeParts.blocks ?? []);
     }
     return node;
   }
@@ -439,6 +441,44 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     if (cases.length) {
       choiceCaseInfo.set(node.id, cases);
     }
+  }
+
+  function processForEachBody(column: number, node: DiagramNode, blocks: BlockStatement[]): void {
+    if (!blocks.length) {
+      return;
+    }
+
+    blocks.forEach((child) => {
+      createColumnNode(column, child);
+    });
+
+    const baseId = `${node.id}_end`;
+    let loopEndId = baseId;
+    let counter = 1;
+    while (nodeById.has(loopEndId)) {
+      loopEndId = `${baseId}_${counter}`;
+      counter += 1;
+    }
+
+    const loopEndNode: DiagramNode = {
+      id: loopEndId,
+      type: 'loop_end',
+      column,
+      label: '',
+      attributes: {
+        implicit: true,
+        loop: node.id
+      },
+      block: {
+        type: 'block',
+        name: 'loop_end',
+        labels: [loopEndId],
+        body: []
+      }
+    };
+
+    registerNode(column, loopEndNode);
+    node.attributes.loop_end = loopEndId;
   }
 
   const resolveParametersValue = (
