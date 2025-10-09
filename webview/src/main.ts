@@ -3,12 +3,7 @@ import {
   zoomIn,
   zoomOut,
   zoomToFit,
-  resetZoomToActual,
-  scrollToTop,
-  scrollToBottom,
-  scrollToLeft,
-  scrollToRight,
-  focusStartNode
+  resetZoomToActual
 } from './renderer.js';
 import { exportDiagram } from './exporters.js';
 
@@ -33,11 +28,6 @@ const zoomInButton = document.getElementById('zoom-in');
 const zoomOutButton = document.getElementById('zoom-out');
 const zoomFitButton = document.getElementById('zoom-fit');
 const zoomActualButton = document.getElementById('zoom-actual');
-const scrollTopButton = document.getElementById('scroll-top');
-const scrollBottomButton = document.getElementById('scroll-bottom');
-const scrollLeftButton = document.getElementById('scroll-left');
-const scrollRightButton = document.getElementById('scroll-right');
-const focusHomeButton = document.getElementById('focus-home');
 
 if (!(diagramEl instanceof HTMLElement) || !(errorsEl instanceof HTMLElement)) {
   throw new Error('Webview container elements were not found.');
@@ -81,31 +71,6 @@ function attachToolbarHandlers(): void {
   if (zoomActualButton instanceof HTMLButtonElement) {
     zoomActualButton.addEventListener('click', () => {
       resetZoomToActual();
-    });
-  }
-  if (scrollTopButton instanceof HTMLButtonElement) {
-    scrollTopButton.addEventListener('click', () => {
-      scrollToTop();
-    });
-  }
-  if (scrollBottomButton instanceof HTMLButtonElement) {
-    scrollBottomButton.addEventListener('click', () => {
-      scrollToBottom();
-    });
-  }
-  if (scrollLeftButton instanceof HTMLButtonElement) {
-    scrollLeftButton.addEventListener('click', () => {
-      scrollToLeft();
-    });
-  }
-  if (scrollRightButton instanceof HTMLButtonElement) {
-    scrollRightButton.addEventListener('click', () => {
-      scrollToRight();
-    });
-  }
-  if (focusHomeButton instanceof HTMLButtonElement) {
-    focusHomeButton.addEventListener('click', () => {
-      focusStartNode();
     });
   }
 }

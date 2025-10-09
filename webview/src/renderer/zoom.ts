@@ -190,73 +190,6 @@ export function setTransform(scale: number, translateX: number, translateY: numb
   applyZoomTransform(transform, animate);
 }
 
-function panTo(translateX: number, translateY: number, animate: boolean): void {
-  const scale = getCurrentScale();
-  let nextX = translateX;
-  let nextY = translateY;
-  if (!Number.isFinite(nextX)) {
-    nextX = round(state.currentTransform?.x ?? 0);
-  }
-  if (!Number.isFinite(nextY)) {
-    nextY = round(state.currentTransform?.y ?? 0);
-  }
-  setTransform(scale, nextX, nextY, animate);
-}
-
-function moveViewportToOrigin(animate: boolean): void {
-  const host = state.currentScrollHost ?? state.currentContainer;
-  host?.scrollTo({ left: 0, top: 0, behavior: animate ? 'smooth' : 'auto' });
-  const scale = getCurrentScale();
-  setTransform(scale, 0, 0, animate);
-}
-
-function currentTranslation(
-  scale: number,
-  dimension: 'x' | 'y',
-  containerSize: number,
-  diagramSize: number
-): number {
-  const existing = state.currentTransform
-    ? dimension === 'x'
-      ? state.currentTransform.x
-      : state.currentTransform.y
-    : undefined;
-  if (Number.isFinite(existing)) {
-    return round(existing as number);
-  }
-  return clampTranslation(0, scale, diagramSize, containerSize);
-}
-
-function panToEdge(direction: 'top' | 'bottom' | 'left' | 'right', animate: boolean): void {
-  const context = requireZoomContext('panToEdge');
-  if (!context) {
-    return;
-  }
-  const { layout, metrics } = context;
-  const scale = getCurrentScale();
-  let targetX = currentTranslation(scale, 'x', metrics.width, layout.width);
-  let targetY = currentTranslation(scale, 'y', metrics.height, layout.height);
-
-  switch (direction) {
-    case 'top':
-      targetY = 0;
-      break;
-    case 'bottom':
-      targetY = metrics.height - layout.height * scale;
-      break;
-    case 'left':
-      targetX = 0;
-      break;
-    case 'right':
-      targetX = metrics.width - layout.width * scale;
-      break;
-    default:
-      break;
-  }
-
-  setTransform(scale, targetX, targetY, animate);
-}
-
 function focusNodeById(nodeId: string, animate: boolean): void {
   const context = requireZoomContext('focusNode');
   if (!context) {
@@ -444,33 +377,19 @@ export function resetZoomToActual(): void {
   logDebug('resetZoom', { event: 'complete' });
 }
 
-export function scrollToTop(): void {
-  panToEdge('top', true);
-}
-
-export function scrollToBottom(): void {
-  panToEdge('bottom', true);
-}
-
-export function scrollToLeft(): void {
-  panToEdge('left', true);
-}
-
-export function scrollToRight(): void {
-  panToEdge('right', true);
-}
-
-export function focusStartNode(): void {
-  if (!state.currentLayout) {
-    return;
-  }
-  moveViewportToOrigin(true);
-}
-
 export function focusNode(nodeId: string): void {
   focusNodeById(nodeId, true);
 }
 
 export function panBy(deltaX: number, deltaY: number): void {
-  panTo(deltaX, deltaY, true);
+  const scale = getCurrentScale();
+  let nextX = deltaX;
+  let nextY = deltaY;
+  if (!Number.isFinite(nextX)) {
+    nextX = round(state.currentTransform?.x ?? 0);
+  }
+  if (!Number.isFinite(nextY)) {
+    nextY = round(state.currentTransform?.y ?? 0);
+  }
+  setTransform(scale, nextX, nextY, true);
 }

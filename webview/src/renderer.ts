@@ -3,10 +3,5 @@ export {
   zoomIn,
   zoomOut,
   zoomToFit,
-  resetZoomToActual,
-  scrollToTop,
-  scrollToBottom,
-  scrollToLeft,
-  scrollToRight,
-  focusStartNode
+  resetZoomToActual
 } from './renderer/zoom.js';
