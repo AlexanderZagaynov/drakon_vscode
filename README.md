@@ -8,6 +8,7 @@ Render plain-text `.drakon` diagrams as interactive visuals inside VS Code.
 - Parses a small text DSL to define nodes and edges.
 - Shows parsing errors inline and updates instantly as you type.
 - **Export diagrams** as SVG, PNG, or WebP files with a single click.
+- Pan and zoom diagrams directly in the custom editor (toolbar navigation, Home/Fit/100% zoom buttons, mouse drag; zoom with Ctrl + scroll).
 
 ## Sample Diagrams
 

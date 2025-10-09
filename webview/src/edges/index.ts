@@ -17,7 +17,7 @@ interface EdgeLayoutResult {
 // Render every edge in the diagram.
 // Responsibility for routing and label layout lives here so the renderer can stay lean.
 export function drawEdges(
-  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+  container: Selection<SVGGElement, unknown, null, undefined>,
   diagram: Diagram,
   layout: LayoutResult,
   nodeById: Map<string, DiagramNode>
@@ -28,7 +28,7 @@ export function drawEdges(
   );
 
   // Collect all edge visuals under a dedicated group so styling stays scoped.
-  const edgesGroup = svg.append('g').attr('class', 'edges');
+  const edgesGroup = container.append('g').attr('class', 'edges');
 
   // Draw the actual connectors first.
   edgesGroup

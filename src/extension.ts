@@ -186,6 +186,21 @@ class DrakonEditorProvider implements vscode.CustomTextEditorProvider {
     <main>
       <div id="toolbar">
         <div class="toolbar-group">
+          <span class="toolbar-label">Navigate:</span>
+          <button class="export-btn" id="scroll-top" title="Scroll to top">Top</button>
+          <button class="export-btn" id="scroll-bottom" title="Scroll to bottom">Bottom</button>
+          <button class="export-btn" id="scroll-left" title="Scroll to left">Left</button>
+          <button class="export-btn" id="scroll-right" title="Scroll to right">Right</button>
+          <button class="export-btn" id="focus-home" title="Focus start node">Home</button>
+        </div>
+        <div class="toolbar-group">
+          <span class="toolbar-label">Zoom:</span>
+          <button class="export-btn" id="zoom-out" title="Zoom out">-</button>
+          <button class="export-btn" id="zoom-in" title="Zoom in">+</button>
+          <button class="export-btn" id="zoom-fit" title="Zoom to fit width">Fit</button>
+          <button class="export-btn" id="zoom-actual" title="Zoom to 100%">100%</button>
+        </div>
+        <div class="toolbar-group">
           <span class="toolbar-label">Export:</span>
           <button class="export-btn" id="export-svg" title="Export as SVG">SVG</button>
           <button class="export-btn" id="export-png" title="Export as PNG">PNG</button>
