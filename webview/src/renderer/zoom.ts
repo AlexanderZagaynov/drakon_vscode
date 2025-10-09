@@ -1,7 +1,65 @@
 import type { ZoomTransform } from 'd3';
+import type { LayoutResult } from '../types.js';
+import type { DiagramContainer } from './types.js';
 import { ZOOM_STEP, MAX_ZOOM, MIN_ZOOM } from './constants.js';
 import { state } from './state.js';
-import { computeDiagramContentBounds, computeFitTransform, round } from './utils.js';
+import { computeDiagramContentBounds, round } from './utils.js';
+
+type ContainerMetrics = {
+  width: number;
+  height: number;
+};
+
+type ZoomContext = {
+  container: DiagramContainer;
+  layout: LayoutResult;
+  metrics: ContainerMetrics;
+};
+
+function formatDebugValue(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? '1' : '0';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value == null) {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function logDebug(scope: string, payload: Record<string, unknown>): void {
+  Object.entries(payload).forEach(([key, value]) => {
+    console.log(`${scope}_${key}=${formatDebugValue(value)}`);
+  });
+}
+
+function requireZoomContext(scope: string): ZoomContext | null {
+  const layout = state.currentLayout;
+  if (!layout) {
+    console.log(`${scope}_missingLayout=1`);
+    return null;
+  }
+  const container = state.currentContainer;
+  if (!container) {
+    console.log(`${scope}_missingContainer=1`);
+    return null;
+  }
+  const metrics = getContainerMetrics(layout);
+  if (!metrics) {
+    console.log(`${scope}_missingMetrics=1`);
+    return null;
+  }
+  return { container, layout, metrics };
+}
 
 export function applyZoomTransform(transform: ZoomTransform, animate: boolean): void {
   if (!state.currentSvg || !state.zoomBehavior) {
@@ -22,16 +80,13 @@ function getCurrentScale(): number {
   return scale;
 }
 
-function getContainerMetrics(): { width: number; height: number } | null {
-  if (!state.currentLayout) {
-    return null;
-  }
+function getContainerMetrics(layout: LayoutResult): ContainerMetrics | null {
   const host = state.currentScrollHost ?? state.currentContainer;
   if (!host) {
     return null;
   }
-  const width = host.clientWidth || state.currentLayout.width;
-  const height = host.clientHeight || state.currentLayout.height;
+  const width = host.clientWidth || layout.width;
+  const height = host.clientHeight || layout.height;
   return { width, height };
 }
 
@@ -74,25 +129,21 @@ type ScaleOptions = {
 };
 
 function applyScale(targetScale: number, options?: ScaleOptions): void {
-  if (!state.currentLayout) {
-    console.log('applyScale_missingLayout=1');
+  const context = requireZoomContext('applyScale');
+  if (!context) {
     return;
   }
-  const metrics = getContainerMetrics();
-  if (!metrics) {
-    console.log('applyScale_missingMetrics=1');
-    return;
-  }
+  const { layout, metrics } = context;
 
   const normalizedScale = clampScaleValue(targetScale);
   if (normalizedScale === null) {
-    console.log(`applyScale_invalidTarget=${targetScale}`);
+    logDebug('applyScale', { invalidTarget: targetScale });
     return;
   }
 
   const currentScale = getCurrentScale();
   if (Math.abs(currentScale - normalizedScale) < 1e-6) {
-    console.log(`applyScale_sameScale=${normalizedScale}`);
+    logDebug('applyScale', { sameScale: normalizedScale });
   }
 
   const fallbackViewportAnchor = [metrics.width / 2, metrics.height / 2] as const;
@@ -105,36 +156,36 @@ function applyScale(targetScale: number, options?: ScaleOptions): void {
   } else {
     const transform = state.currentTransform ?? d3.zoomIdentity;
     const inverted = transform.invert(viewportAnchor as [number, number]);
-  const diagX = Number.isFinite(inverted[0]) ? inverted[0] : state.currentLayout.width / 2;
-  const diagY = Number.isFinite(inverted[1]) ? inverted[1] : state.currentLayout.height / 2;
-  diagramAnchor = [diagX, diagY] as const;
+    const diagX = Number.isFinite(inverted[0]) ? inverted[0] : layout.width / 2;
+    const diagY = Number.isFinite(inverted[1]) ? inverted[1] : layout.height / 2;
+    diagramAnchor = [diagX, diagY] as const;
   }
 
   const translateX = round(viewportAnchor[0] - diagramAnchor[0] * normalizedScale);
   const translateY = round(viewportAnchor[1] - diagramAnchor[1] * normalizedScale);
 
-  console.log(`applyScale_targetScale=${targetScale}`);
-  console.log(`applyScale_normalizedScale=${normalizedScale}`);
-  console.log(`applyScale_viewportAnchorX=${viewportAnchor[0]}`);
-  console.log(`applyScale_viewportAnchorY=${viewportAnchor[1]}`);
-  console.log(`applyScale_diagramAnchorX=${diagramAnchor[0]}`);
-  console.log(`applyScale_diagramAnchorY=${diagramAnchor[1]}`);
-  console.log(`applyScale_translateX=${translateX}`);
-  console.log(`applyScale_translateY=${translateY}`);
+  logDebug('applyScale', {
+    targetScale,
+    normalizedScale,
+    viewportAnchorX: viewportAnchor[0],
+    viewportAnchorY: viewportAnchor[1],
+    diagramAnchorX: diagramAnchor[0],
+    diagramAnchorY: diagramAnchor[1],
+    translateX,
+    translateY
+  });
 
   setTransform(normalizedScale, translateX, translateY, options?.animate ?? true);
 }
 
 export function setTransform(scale: number, translateX: number, translateY: number, animate: boolean): void {
-  if (!state.currentLayout || !state.currentContainer) {
+  const context = requireZoomContext('setTransform');
+  if (!context) {
     return;
   }
-  const metrics = getContainerMetrics();
-  if (!metrics) {
-    return;
-  }
-  const clampedX = clampTranslation(translateX, scale, state.currentLayout.width, metrics.width);
-  const clampedY = clampTranslation(translateY, scale, state.currentLayout.height, metrics.height);
+  const { layout, metrics } = context;
+  const clampedX = clampTranslation(translateX, scale, layout.width, metrics.width);
+  const clampedY = clampTranslation(translateY, scale, layout.height, metrics.height);
   const transform = d3.zoomIdentity.translate(clampedX, clampedY).scale(round(scale));
   applyZoomTransform(transform, animate);
 }
@@ -177,29 +228,27 @@ function currentTranslation(
 }
 
 function panToEdge(direction: 'top' | 'bottom' | 'left' | 'right', animate: boolean): void {
-  if (!state.currentLayout) {
+  const context = requireZoomContext('panToEdge');
+  if (!context) {
     return;
   }
-  const metrics = getContainerMetrics();
-  if (!metrics) {
-    return;
-  }
+  const { layout, metrics } = context;
   const scale = getCurrentScale();
-  let targetX = currentTranslation(scale, 'x', metrics.width, state.currentLayout.width);
-  let targetY = currentTranslation(scale, 'y', metrics.height, state.currentLayout.height);
+  let targetX = currentTranslation(scale, 'x', metrics.width, layout.width);
+  let targetY = currentTranslation(scale, 'y', metrics.height, layout.height);
 
   switch (direction) {
     case 'top':
       targetY = 0;
       break;
     case 'bottom':
-      targetY = metrics.height - state.currentLayout.height * scale;
+      targetY = metrics.height - layout.height * scale;
       break;
     case 'left':
       targetX = 0;
       break;
     case 'right':
-      targetX = metrics.width - state.currentLayout.width * scale;
+      targetX = metrics.width - layout.width * scale;
       break;
     default:
       break;
@@ -209,14 +258,12 @@ function panToEdge(direction: 'top' | 'bottom' | 'left' | 'right', animate: bool
 }
 
 function focusNodeById(nodeId: string, animate: boolean): void {
-  if (!state.currentLayout) {
+  const context = requireZoomContext('focusNode');
+  if (!context) {
     return;
   }
-  const metrics = getContainerMetrics();
-  if (!metrics) {
-    return;
-  }
-  const position = state.currentLayout.positions.get(nodeId);
+  const { layout, metrics } = context;
+  const position = layout.positions.get(nodeId);
   if (!position) {
     return;
   }
@@ -228,14 +275,16 @@ function focusNodeById(nodeId: string, animate: boolean): void {
 
 function scaleDiagram(factor: number, anchor?: readonly [number, number]): void {
   if (!Number.isFinite(factor) || factor <= 0) {
-    console.log(`scaleDiagram_invalidFactor=${factor}`);
+    logDebug('scaleDiagram', { invalidFactor: factor });
     return;
   }
   const currentScale = getCurrentScale();
   const targetScale = currentScale * factor;
-  console.log(`scaleDiagram_factor=${factor}`);
-  console.log(`scaleDiagram_currentScale=${currentScale}`);
-  console.log(`scaleDiagram_targetScale=${targetScale}`);
+  logDebug('scaleDiagram', {
+    factor,
+    currentScale,
+    targetScale
+  });
   const transform = state.currentTransform ?? d3.zoomIdentity;
   const viewportAnchor = anchor ?? ([transform.x, transform.y] as const);
   applyScale(targetScale, {
@@ -273,54 +322,56 @@ export function zoomOut(): void {
 }
 
 export function zoomToFit(): void {
-  if (!state.currentLayout || !state.currentContainer) {
-    console.log('zoomToFit_missingLayoutOrContainer=1');
+  const context = requireZoomContext('zoomToFit');
+  if (!context) {
     return;
   }
-  const host = state.currentScrollHost ?? state.currentContainer;
+  const host = state.currentScrollHost ?? context.container;
   host?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
-  console.log('zoomToFit_scale=1');
-  console.log('zoomToFit_translateX=0');
-  console.log('zoomToFit_translateY=0');
+  logDebug('zoomToFit', { scale: 1, translateX: 0, translateY: 0 });
   setTransform(1, 0, 0, true);
 }
 
 export function resetZoomToActual(): void {
-  console.log('resetZoom_start=1');
+  logDebug('resetZoom', { event: 'start' });
   if (!state.currentLayout || !state.currentContainer) {
-    console.log('resetZoom_missingLayoutOrContainer=1');
+    logDebug('resetZoom', { missingLayoutOrContainer: true });
     return;
   }
 
-  const metrics = getContainerMetrics();
+  const layout = state.currentLayout;
+  const container = state.currentContainer;
+  const metrics = getContainerMetrics(layout);
   if (!metrics) {
-    console.log('resetZoom_missingMetrics=1');
+    logDebug('resetZoom', { missingMetrics: true });
     return;
   }
 
-  const layoutWidth = state.currentLayout.width;
-  const layoutHeight = state.currentLayout.height;
+  const layoutWidth = layout.width;
+  const layoutHeight = layout.height;
   let minX = 0;
   let minY = 0;
   let maxX = layoutWidth;
   let maxY = layoutHeight;
 
   if (state.currentDiagram) {
-    const bounds = computeDiagramContentBounds(state.currentDiagram, state.currentLayout);
+    const bounds = computeDiagramContentBounds(state.currentDiagram, layout);
     if (bounds) {
       minX = Math.min(bounds.minX, minX);
       minY = Math.min(bounds.minY, minY);
       maxX = Math.max(bounds.maxX, maxX);
       maxY = Math.max(bounds.maxY, maxY);
-      console.log(`resetZoom_contentMinX=${bounds.minX}`);
-      console.log(`resetZoom_contentMinY=${bounds.minY}`);
-      console.log(`resetZoom_contentMaxX=${bounds.maxX}`);
-      console.log(`resetZoom_contentMaxY=${bounds.maxY}`);
+      logDebug('resetZoom', {
+        contentMinX: bounds.minX,
+        contentMinY: bounds.minY,
+        contentMaxX: bounds.maxX,
+        contentMaxY: bounds.maxY
+      });
     } else {
-      console.log('resetZoom_contentBoundsFallback=1');
+      logDebug('resetZoom', { contentBoundsFallback: true });
     }
   } else {
-    console.log('resetZoom_noDiagram=1');
+    logDebug('resetZoom', { noDiagram: true });
   }
 
   const zoomTargetNode = state.zoomTarget?.node();
@@ -332,57 +383,65 @@ export function resetZoomToActual(): void {
     minY = Math.min(minY, bbox.y);
     maxX = Math.max(maxX, bboxMaxX);
     maxY = Math.max(maxY, bboxMaxY);
-    console.log(`resetZoom_bboxX=${bbox.x}`);
-    console.log(`resetZoom_bboxY=${bbox.y}`);
-    console.log(`resetZoom_bboxWidth=${bbox.width}`);
-    console.log(`resetZoom_bboxHeight=${bbox.height}`);
+    logDebug('resetZoom', {
+      bboxX: bbox.x,
+      bboxY: bbox.y,
+      bboxWidth: bbox.width,
+      bboxHeight: bbox.height
+    });
   } else {
-    console.log('resetZoom_noBBox=1');
+    logDebug('resetZoom', { noBBox: true });
   }
 
   const contentWidth = Math.max(maxX - minX, 1);
   const contentHeight = Math.max(maxY - minY, 1);
-  const domContentWidth = state.currentContainer ? state.currentContainer.scrollWidth : contentWidth;
-  const domContentHeight = state.currentContainer ? state.currentContainer.scrollHeight : contentHeight;
+  const domContentWidth = container.scrollWidth || contentWidth;
+  const domContentHeight = container.scrollHeight || contentHeight;
   const effectiveWidth = Math.max(contentWidth, domContentWidth);
   const effectiveHeight = Math.max(contentHeight, domContentHeight);
-    const scaleX = metrics.width / contentWidth;
-    const scaleY = metrics.height / contentHeight;
-    const devicePixelRatio = window.devicePixelRatio || 1;
+  const scaleX = metrics.width / contentWidth;
+  const scaleY = metrics.height / contentHeight;
+  const devicePixelRatio = window.devicePixelRatio || 1;
   const scaleDomX = metrics.width / effectiveWidth;
   const scaleDomY = metrics.height / effectiveHeight;
   const baseScale = Math.min(scaleX, scaleY, scaleDomX, scaleDomY);
-    const desiredScale = baseScale / devicePixelRatio;
+  const desiredScale = baseScale / devicePixelRatio;
   const normalizedScale = clampScaleValue(desiredScale) ?? 1;
 
-  console.log(`resetZoom_containerWidth=${metrics.width}`);
-  console.log(`resetZoom_containerHeight=${metrics.height}`);
-  console.log(`resetZoom_contentWidth=${contentWidth}`);
-  console.log(`resetZoom_contentHeight=${contentHeight}`);
-  console.log(`resetZoom_domContentWidth=${domContentWidth}`);
-  console.log(`resetZoom_domContentHeight=${domContentHeight}`);
-  console.log(`resetZoom_scaleX=${scaleX}`);
-  console.log(`resetZoom_scaleY=${scaleY}`);
-  console.log(`resetZoom_scaleDomX=${scaleDomX}`);
-  console.log(`resetZoom_scaleDomY=${scaleDomY}`);
-    console.log(`resetZoom_devicePixelRatio=${devicePixelRatio}`);
-    console.log(`resetZoom_baseScale=${baseScale}`);
-  console.log(`resetZoom_desiredScale=${desiredScale}`);
-  console.log(`resetZoom_normalizedScale=${normalizedScale}`);
+  logDebug('resetZoom', {
+    containerWidth: metrics.width,
+    containerHeight: metrics.height,
+    contentWidth,
+    contentHeight,
+    domContentWidth,
+    domContentHeight,
+    scaleX,
+    scaleY,
+    scaleDomX,
+    scaleDomY,
+    devicePixelRatio,
+    baseScale,
+    desiredScale,
+    normalizedScale
+  });
 
   const contentCenterX = (minX + maxX) / 2;
   const contentCenterY = (minY + maxY) / 2;
-  console.log(`resetZoom_contentCenterX=${contentCenterX}`);
-  console.log(`resetZoom_contentCenterY=${contentCenterY}`);
+  logDebug('resetZoom', {
+    contentCenterX,
+    contentCenterY
+  });
 
   const translateX = round(-minX * normalizedScale);
   const translateY = round(-minY * normalizedScale);
-  console.log(`resetZoom_translateX=${translateX}`);
-  console.log(`resetZoom_translateY=${translateY}`);
+  logDebug('resetZoom', {
+    translateX,
+    translateY
+  });
 
   setTransform(normalizedScale, translateX, translateY, false);
 
-  console.log('resetZoom_complete=1');
+  logDebug('resetZoom', { event: 'complete' });
 }
 
 export function scrollToTop(): void {
