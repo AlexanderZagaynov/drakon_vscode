@@ -1,3 +1,6 @@
+// CSI: layout engine — prepares node geometry and positions diagram lanes so
+// rendering/exports can reason about coordinates consistently.
+
 import type { Diagram, LayoutResult, LayoutConfig, NodeGeometry, DiagramNode, DiagramEdge } from './types.js';
 import { getNodeSpec } from './shapes/index.js';
 import { baseAnchor } from './shared.js';
@@ -13,6 +16,8 @@ export const LAYOUT: LayoutConfig = {
 };
 
 export function prepareNodes(diagram: Diagram): void {
+  // CSI: geometry pre-pass — compute text wrapping and box sizing before layout
+  // so we can place nodes with accurate dimensions.
   diagram.nodes.forEach((node) => {
     const spec = getNodeSpec(node.type);
     const lineHeight = spec.lineHeight ?? 22;
@@ -46,11 +51,14 @@ export function prepareNodes(diagram: Diagram): void {
 }
 
 export function buildLayout(diagram: Diagram): LayoutResult {
+  // CSI: alias — pull layout constants locally for readability.
   const laneGap = LAYOUT.laneGap;
   const laneSpacing = LAYOUT.laneSpacing;
   const laneTop = LAYOUT.laneTopMargin;
   const laneLeft = LAYOUT.laneLeftMargin;
 
+  // CSI: column bucketing — group nodes by declared column index so lanes align
+  // vertically.
   const columnEntries = new Map<number, { node: DiagramNode; order: number }[]>();
   const inboundCount = new Map<string, number>();
   diagram.edges.forEach((edge) => {
@@ -58,6 +66,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     inboundCount.set(toId, (inboundCount.get(toId) ?? 0) + 1);
   });
 
+  // CSI: synthetic edges — link column siblings lacking inbound edges so depth
+  // sorting treats them as sequential.
   const syntheticEdges: DiagramEdge[] = [];
   const lastInColumn = new Map<number, string>();
 
@@ -90,6 +100,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     edges: [...diagram.edges, ...syntheticEdges]
   };
 
+  // CSI: depth map — determine row order using actual plus synthetic edges.
   const depths = computeDepths(augmentedDiagram);
 
   if (!columnEntries.size) {
@@ -101,6 +112,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   let currentX = laneLeft;
 
   sortedColumns.forEach((column) => {
+    // CSI: column layout — keep nodes sorted by depth then document order for
+    // stable positioning.
     const entries = columnEntries.get(column) ?? [];
     entries.sort((a, b) => {
       const depthDiff = (depths.get(a.node.id) ?? 0) - (depths.get(b.node.id) ?? 0);
@@ -116,6 +129,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     currentX += columnWidth + laneGap;
   });
 
+  // CSI: vertical grouping — determine row centers using depth breakdown.
   const defaultHeight = 170;
   const levelNodes = new Map<number, DiagramNode[]>();
   diagram.nodes.forEach((node) => {
@@ -134,6 +148,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     cursorY = laneTop + defaultHeight;
   } else {
     sortedLevels.forEach((level, index) => {
+      // CSI: row sizing — choose the tallest node height per level to space rows
+      // while respecting lane spacing between groups.
       const nodesAtLevel = levelNodes.get(level) ?? [];
       const maxHeight = nodesAtLevel.reduce(
         (acc, node) => Math.max(acc, node.geometry?.height ?? defaultHeight),
@@ -158,6 +174,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     const entries = columnEntries.get(column) ?? [];
     const columnX = columnLayouts.get(column)?.x ?? laneLeft;
     entries.forEach(({ node }) => {
+      // CSI: node placement — map each node id to its final coordinates and
+      // track bounding box for diagram size.
       const depth = depths.get(node.id) ?? 0;
       const centerY = levelCenters.get(depth) ?? fallbackCenter;
       const height = node.geometry?.height ?? defaultHeight;
@@ -177,11 +195,15 @@ export function buildLayout(diagram: Diagram): LayoutResult {
   const totalWidth = Math.max(currentX - laneGap + laneLeft, 640);
   const totalHeight = Math.max(globalBottom + LAYOUT.laneBottomMargin, 600);
 
+  // CSI: anchor defaults — ensure edges have resolved anchor ids for exporters
+  // and hit-testing code.
   diagram.edges.forEach((edge) => {
     edge.fromBase = edge.fromBase ?? baseAnchor(edge.from);
     edge.toBase = edge.toBase ?? baseAnchor(edge.to);
   });
 
+  // CSI: cosmetic adjustment — align parameters node with start so the layout
+  // matches DRAKON expectations.
   const startNode = diagram.nodes.find((node) => node.type === 'start');
   const parametersNode = diagram.nodes.find((node) => node.type === 'parameters');
   if (startNode && parametersNode) {
@@ -196,6 +218,8 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 }
 
 function computeDepths(diagram: Diagram): Map<string, number> {
+  // CSI: depth pass — derive a topological depth for each node so branching
+  // lanes stay aligned.
   const depths = new Map<string, number>();
   const adjacency = new Map<string, { id: string; weight: number }[]>();
   const indegree = new Map<string, number>();

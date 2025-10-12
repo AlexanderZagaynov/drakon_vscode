@@ -1,3 +1,4 @@
+// CSI: simple output — compact mirror of simple input.
 import type { NodeSpec } from '../types.js';
 import { drawOutputShape } from './output.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 export const simpleOutputSpec: NodeSpec = {
+  // CSI: shared metrics — maintain symmetry with the simple input block.
   width: BASE_NODE_WIDTH,
   minHeight: BASE_NODE_MIN_HEIGHT * (14 / 17),
   lineHeight: BASE_LINE_HEIGHT,

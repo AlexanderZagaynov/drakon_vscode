@@ -1,3 +1,4 @@
+// CSI: choice node — trapezoid leading into branch lanes.
 import type { NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import type { DiagramNode } from '../types.js';
@@ -10,6 +11,7 @@ import {
 } from './constants.js';
 
 function drawChoiceShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: skew sides slightly to signal lane divergence.
   const skew = Math.min(width * 0.18, 42);
   const path = d3.path();
   path.moveTo(-width / 2 + skew, -height / 2);
@@ -24,6 +26,7 @@ function drawChoiceShape(group: NodeSelection, width: number, height: number, no
 }
 
 export const choiceSpec: NodeSpec = {
+  // CSI: taller body — create room for multi-line question prompts.
   width: BASE_NODE_WIDTH * (7 / 6),
   minHeight: BASE_NODE_MIN_HEIGHT * (20 / 17),
   lineHeight: BASE_LINE_HEIGHT * (12 / 11),

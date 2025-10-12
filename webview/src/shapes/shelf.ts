@@ -1,3 +1,4 @@
+// CSI: shelf node — rounded rectangle with upper/lower divisions marking storage areas.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
@@ -10,6 +11,7 @@ import {
 } from './constants.js';
 
 function drawShelfShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: base frame — start with standard rounded rectangle.
   drawRoundedRectangle(group, width, height, node);
   const top = -height / 2 + Math.min(0.22 * height, 38);
   const bottom = height / 2 - Math.min(0.18 * height, 32);
@@ -37,6 +39,7 @@ function drawShelfShape(group: NodeSelection, width: number, height: number, nod
 }
 
 export const shelfSpec: NodeSpec = {
+  // CSI: extra top padding — leave room for shelf label header.
   width: BASE_NODE_WIDTH * (4 / 3),
   minHeight: BASE_NODE_MIN_HEIGHT * (19 / 17),
   lineHeight: BASE_LINE_HEIGHT,

@@ -1,3 +1,4 @@
+// CSI: action node — classic rectangle used for imperative steps.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawActionShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: geometry — centered rect with crisp corners (rx/ry = 0) per DRAKON spec.
   group
     .append('rect')
     .attr('class', `node-shape ${node.type}`)
@@ -21,6 +23,8 @@ function drawActionShape(group: NodeSelection, width: number, height: number, no
 }
 
 export const actionSpec: NodeSpec = {
+  // CSI: metrics — shrink min height slightly below generic default to match
+  // reference illustrations.
   width: BASE_NODE_WIDTH,
   minHeight: BASE_NODE_MIN_HEIGHT * (14 / 17),
   lineHeight: BASE_LINE_HEIGHT,

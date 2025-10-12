@@ -1,3 +1,4 @@
+// CSI: parameters node — rectangular block with a left spur referencing input sources.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -11,6 +12,7 @@ import {
 } from './constants.js';
 
 function drawParametersShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: main body — standard rect sized by layout pre-pass.
   group
     .append('rect')
     .attr('class', `node-shape ${node.type}`)
@@ -22,6 +24,7 @@ function drawParametersShape(group: NodeSelection, width: number, height: number
     .attr('ry', 0);
 
   const spurLength = Math.min(width * 0.15, 60);
+  // CSI: spur — short connector stub indicating parameter inputs.
   group
     .append('line')
     .attr('class', 'node-connection parameters-spur')
@@ -32,6 +35,7 @@ function drawParametersShape(group: NodeSelection, width: number, height: number
 }
 
 export const parametersSpec: NodeSpec = {
+  // CSI: asymmetric padding — bias text left to align with the spur.
   width: BASE_NODE_WIDTH * (5 / 4),
   minHeight: BASE_NODE_MIN_HEIGHT * (11 / 17),
   lineHeight: BASE_LINE_HEIGHT * (9 / 11),

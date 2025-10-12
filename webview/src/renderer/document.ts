@@ -1,3 +1,6 @@
+// CSI: renderer core — orchestrates parsing, layout, SVG construction, and
+// zoom state restoration for the webview preview.
+
 import { buildLayout, LAYOUT, prepareNodes } from '../layout.js';
 import { drawNode } from '../shapes/index.js';
 import { drawEdges } from '../edges/index.js';
@@ -12,12 +15,16 @@ import { MAX_ZOOM, MIN_ZOOM } from './constants.js';
 export { LAYOUT };
 
 export function renderDocument(text: string, diagramEl: DiagramContainer, errorsEl: HTMLElement): void {
+  // CSI: entry point — parse the DSL, surface any syntax issues, and either
+  // render the diagram or show an empty-state message.
   const result = parseHclDiagram(text);
   updateErrors(result.errors, errorsEl);
   drawDiagram(result.diagram, result.errors, diagramEl, errorsEl);
 }
 
 function updateErrors(errors: string[], errorsEl: HTMLElement): void {
+  // CSI: UX affordance — hide the error panel when there are no issues to keep
+  // the preview uncluttered.
   if (!errors.length) {
     errorsEl.classList.add('hidden');
     errorsEl.innerHTML = '';
@@ -34,6 +41,8 @@ function drawDiagram(
   diagramEl: DiagramContainer,
   errorsEl: HTMLElement
 ): void {
+  // CSI: zoom continuity — stash the previous transform so user zoom state is
+  // preserved across rebuilds.
   const previousTransform = state.currentTransform;
   initializeState(diagramEl);
   state.currentDiagram = diagram;
@@ -41,6 +50,8 @@ function drawDiagram(
   diagramEl.innerHTML = '';
 
   if (!diagram || !diagram.nodes.length) {
+    // CSI: empty render — explain why nothing is shown (syntax error vs. blank
+    // diagram) instead of leaving a vacant canvas.
     state.currentDiagram = null;
     const message = document.createElement('p');
     message.className = 'empty-state';
@@ -51,11 +62,14 @@ function drawDiagram(
     diagramEl.appendChild(message);
     return;
   }
-
+  // CSI: layout pipeline — normalize nodes, compute spatial layout, and cache
+  // results for later interactions.
   prepareNodes(diagram);
   const layout = buildLayout(diagram);
   state.currentLayout = layout;
 
+  // CSI: scaffold — build the root SVG once, letting D3 own DOM mutations for
+  // predictable diffing behavior.
   const svg = d3
     .select(diagramEl)
     .append('svg')
@@ -64,6 +78,8 @@ function drawDiagram(
     .attr('width', '100%')
     .attr('height', '100%');
 
+  // CSI: origin math — pick a centered origin so zoom-to-fit hugs content
+  // rather than arbitrary layout extremes.
   const contentBounds = computeDiagramContentBounds(diagram, layout);
   const layoutCenterX = layout.width / 2;
   const layoutCenterY = layout.height / 2;
@@ -79,6 +95,8 @@ function drawDiagram(
     columnsMax = Math.max(columnsMax, right);
   });
 
+  // CSI: export metadata — store layout stats as data attributes so exporters
+  // and tests can reconstruct viewport math without recomputing layout.
   svg
     .attr('data-diagram-origin-x', String(round(originX)))
     .attr('data-diagram-origin-y', String(round(layoutCenterY)))
@@ -90,6 +108,8 @@ function drawDiagram(
     .attr('data-layout-columns-min-x', Number.isFinite(columnsMin) ? String(round(columnsMin)) : '')
     .attr('data-layout-columns-max-x', Number.isFinite(columnsMax) ? String(round(columnsMax)) : '');
 
+  // CSI: marker setup — define arrowheads once so edge rendering can reference
+  // them by id.
   const defs = svg.append('defs');
   defs
     .append('marker')
@@ -107,11 +127,14 @@ function drawDiagram(
   const contentGroup = svg.append('g').attr('class', 'diagram-content');
   contentGroup.append('g').attr('class', 'grid');
 
+  // CSI: node index — map node ids for quick edge lookups.
   const nodeById = new Map<string, Diagram['nodes'][number]>();
   diagram.nodes.forEach((node) => nodeById.set(node.id, node));
 
   drawEdges(contentGroup, diagram, layout, nodeById);
 
+  // CSI: nodes layer — keep nodes on top of edges to match DRAKON’s visual
+  // hierarchy.
   const nodesGroup = contentGroup.append('g').attr('class', 'nodes');
 
   const nodeEnter = nodesGroup
@@ -129,6 +152,8 @@ function drawDiagram(
     drawNode(d3.select(this), node);
   });
 
+  // CSI: zoom binding — register the SVG group and D3 zoom behavior so toolbar
+  // controls and gestures manipulate the same state.
   state.zoomTarget = contentGroup;
   state.zoomBehavior = d3
     .zoom<SVGSVGElement, unknown>()
@@ -177,6 +202,8 @@ function drawDiagram(
   state.currentSvg = svg;
 
   if (previousTransform) {
+    // CSI: restore — reapply prior transform without animation so the diagram
+    // doesn’t flicker after edits.
     applyZoomTransform(previousTransform, false);
   } else {
     state.currentScrollHost?.scrollTo({ left: 0, top: 0, behavior: 'auto' });

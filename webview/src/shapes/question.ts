@@ -1,3 +1,4 @@
+// CSI: question node — hexagonal decision diamond rendered via custom path.
 import type { NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import type { DiagramNode } from '../types.js';
@@ -10,6 +11,7 @@ import {
 } from './constants.js';
 
 function drawQuestionShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: construct beveled hexagon — emulate classic DRAKON decision diamond.
   const path = d3.path();
   const bevel = Math.min(width / 4, height / 1.5);
   const halfWidth = width / 2;
@@ -28,6 +30,7 @@ function drawQuestionShape(group: NodeSelection, width: number, height: number, 
 }
 
 export const questionSpec: NodeSpec = {
+  // CSI: widen footprint — allow space for longer Yes/No labels.
   width: BASE_NODE_WIDTH * (4 / 3),
   minHeight: BASE_NODE_MIN_HEIGHT,
   lineHeight: BASE_LINE_HEIGHT,

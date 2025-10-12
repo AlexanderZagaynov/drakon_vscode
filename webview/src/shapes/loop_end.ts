@@ -1,3 +1,4 @@
+// CSI: loop end node — action-like with clipped bottom corners indicating loop closure.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawLoopEndShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: keep top flat; bevel bottom corners to show the loop returning upward.
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   const bevel = Math.max(6, Math.min(halfWidth * 0.25, 14));
@@ -35,6 +37,7 @@ function drawLoopEndShape(group: NodeSelection, width: number, height: number, n
 }
 
 export const loopEndSpec: NodeSpec = {
+  // CSI: slim footprint — align with for-each headers stacked above.
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (9 / 17),
   lineHeight: BASE_LINE_HEIGHT * (9 / 11),

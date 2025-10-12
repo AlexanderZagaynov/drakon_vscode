@@ -1,3 +1,4 @@
+// CSI: group duration marker — narrow stadium highlight for timeline legends.
 import type { NodeSpec } from '../types.js';
 import { drawStadium } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 export const groupDurationSpec: NodeSpec = {
+  // CSI: half-width — small badge that sits alongside duration blocks.
   width: BASE_NODE_WIDTH / 2,
   minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
   lineHeight: BASE_LINE_HEIGHT,

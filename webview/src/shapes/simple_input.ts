@@ -1,3 +1,4 @@
+// CSI: simple input — compact variant for quick prompts.
 import type { NodeSpec } from '../types.js';
 import { drawInputShape } from './input.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 export const simpleInputSpec: NodeSpec = {
+  // CSI: default width — keep slim footprint for lightweight dialogs.
   width: BASE_NODE_WIDTH,
   minHeight: BASE_NODE_MIN_HEIGHT * (14 / 17),
   lineHeight: BASE_LINE_HEIGHT,

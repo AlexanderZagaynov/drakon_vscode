@@ -1,3 +1,6 @@
+// CSI: shapes registry — maps diagram node types to their drawing specs so the
+// renderer can construct consistent SVG geometry.
+
 import type { Selection } from 'd3';
 import type { DiagramNode, NodeGeometry, NodeSpec } from '../types.js';
 import { defaultSpec } from './default.js';
@@ -56,10 +59,14 @@ const NODE_LIBRARY: Record<string, NodeSpec> = {
 };
 
 export function getNodeSpec(type: string): NodeSpec {
+  // CSI: spec lookup — fall back to default visuals when an unknown node type
+  // is encountered.
   return NODE_LIBRARY[type] ?? defaultSpec;
 }
 
 export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>, node: DiagramNode): void {
+  // CSI: geometry contract — layout attaches `geometry` before render; treat it
+  // as required to keep drawing math predictable.
   const geometry = node.geometry as NodeGeometry;
   const {
     width,
@@ -73,6 +80,8 @@ export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>
     paddingRight,
     wrappedLines
   } = geometry;
+  // CSI: drawing delegate — use the node-specific draw routine, defaulting to
+  // the generic shape when custom art is missing.
   const draw = spec.draw ?? defaultSpec.draw;
   draw(group, width, height, node);
 
@@ -92,6 +101,8 @@ export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>
     .attr('text-anchor', anchor);
 
   if (baselineMode === 'top') {
+    // CSI: top baseline — stack tspans from the upper padding for timeline-
+    // style shapes.
     text.attr('dominant-baseline', 'text-before-edge').attr('y', -height / 2 + paddingTop).attr('x', baseX);
     labelLines.forEach((line, index) => {
       text
@@ -101,6 +112,8 @@ export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>
         .text(line);
     });
   } else {
+    // CSI: centered baseline — default flow keeps labels vertically centered
+    // while respecting custom offsets.
     const lineCount = Math.max(1, lines);
     const initialDy = -((lineCount - 1) / 2) * lineHeight;
     text.attr('dominant-baseline', 'middle').attr('y', textYOffset).attr('x', baseX);

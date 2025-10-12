@@ -1,3 +1,6 @@
+// CSI: Module intent — bridge toolbar/WebView wiring so user actions fan out to
+// renderer helpers without leaking VS Code globals through the rest of the UI.
+
 import {
   renderDocument,
   zoomIn,
@@ -7,6 +10,8 @@ import {
 } from './renderer.js';
 import { exportDiagram } from './exporters.js';
 
+// CSI: guard — normalize the VS Code messaging API so our harness can run in
+// browser tests where `acquireVsCodeApi` is absent.
 function getWebviewApi(): WebviewApi {
   if (typeof acquireVsCodeApi === 'function') {
     return acquireVsCodeApi();
@@ -19,6 +24,8 @@ function getWebviewApi(): WebviewApi {
 }
 
 const vscode = getWebviewApi();
+// CSI: wiring — cache common DOM targets once; repeated lookups for the same
+// nodes would invite accidental null checks elsewhere.
 const diagramEl = document.getElementById('diagram');
 const errorsEl = document.getElementById('errors');
 const exportSvgButton = document.getElementById('export-svg');
@@ -29,6 +36,8 @@ const zoomOutButton = document.getElementById('zoom-out');
 const zoomFitButton = document.getElementById('zoom-fit');
 const zoomActualButton = document.getElementById('zoom-actual');
 
+// CSI: fail-fast — the webview cannot render without these containers, so bail
+// quickly with a descriptive exception rather than limp along.
 if (!(diagramEl instanceof HTMLElement) || !(errorsEl instanceof HTMLElement)) {
   throw new Error('Webview container elements were not found.');
 }
@@ -37,6 +46,8 @@ const diagramContainer = diagramEl as HTMLElement;
 const errorsContainer = errorsEl as HTMLElement;
 let lastRenderedSource: string | null = null;
 
+// CSI: action — centralize export dispatch so toolbar buttons and remote
+// commands share retry/logging behavior.
 const triggerExport = (format: 'svg' | 'png' | 'webp') => {
   exportDiagram(format, diagramContainer, vscode).catch((error) => {
     console.error(`Failed to export diagram as ${format}:`, error);
@@ -44,6 +55,8 @@ const triggerExport = (format: 'svg' | 'png' | 'webp') => {
 };
 
 function attachToolbarHandlers(): void {
+  // CSI: handlers — wire each optional button defensively so custom test
+  // harnesses can omit controls without crashing event hookup.
   if (exportSvgButton instanceof HTMLButtonElement) {
     exportSvgButton.addEventListener('click', () => triggerExport('svg'));
   }
@@ -77,9 +90,13 @@ function attachToolbarHandlers(): void {
 
 type IncomingMessage = { type?: string; text?: string; format?: string };
 
+// CSI: bus listener — react to extension messages for document updates and
+// headless export requests.
 window.addEventListener('message', (event: MessageEvent<IncomingMessage>) => {
   const message = event.data;
   if (message?.type === 'update') {
+    // CSI: duplicate suppression — only rerender when the extension sends a new
+    // payload; avoids flicker during rapid save events.
     const nextSource = message.text ?? '';
     if (nextSource === lastRenderedSource) {
       return;
@@ -100,4 +117,6 @@ window.addEventListener('message', (event: MessageEvent<IncomingMessage>) => {
 });
 
 vscode.postMessage({ type: 'ready' });
+// CSI: startup — wire toolbar at the end so DOM is guaranteed ready before we
+// attach handlers.
 attachToolbarHandlers();

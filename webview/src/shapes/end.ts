@@ -1,3 +1,4 @@
+// CSI: end node — reuse stadium geometry to mirror the start marker.
 import type { NodeSpec } from '../types.js';
 import { drawStadium } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 export const endSpec: NodeSpec = {
+  // CSI: symmetry — match start dimensions so entry/exit bookend the flow.
   width: BASE_NODE_WIDTH * (5 / 6),
   minHeight: BASE_NODE_MIN_HEIGHT * (10 / 17),
   lineHeight: BASE_LINE_HEIGHT * (10 / 11),

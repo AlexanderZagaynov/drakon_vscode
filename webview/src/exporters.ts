@@ -1,3 +1,5 @@
+// CSI: wiring payload — mirrors the message envelope expected by the extension
+// host when a webview export completes.
 interface ExportFormatMessage {
   type: 'export';
   format: 'svg' | 'png' | 'webp';
@@ -6,6 +8,8 @@ interface ExportFormatMessage {
 
 type SupportedFormat = ExportFormatMessage['format'];
 
+// CSI: tuning knobs — raster exports need extra pixel density and sensible
+// WebP quality so diagrams stay crisp without ballooning file size.
 const RASTER_SCALE = 2;
 const WEBP_QUALITY = 0.95;
 
@@ -14,6 +18,8 @@ export async function exportDiagram(
   diagramEl: HTMLElement,
   vscode: WebviewApi
 ): Promise<void> {
+  // CSI: availability gate — surface a friendly warning if the renderer hasn't
+  // mounted the SVG yet instead of throwing an opaque error.
   const svgElement = diagramEl.querySelector('svg');
   if (!(svgElement instanceof SVGSVGElement)) {
     console.warn('Export requested but no SVG diagram is available.');
@@ -21,17 +27,22 @@ export async function exportDiagram(
   }
 
   if (format === 'svg') {
+    // CSI: fast path — raw SVG exports avoid rasterization entirely.
     const svgMarkup = serializeSvg(svgElement);
     vscode.postMessage({ type: 'export', format, data: svgMarkup } satisfies ExportFormatMessage);
     return;
   }
 
+  // CSI: raster flow — serialize once so PNG/WebP branches share consistent
+  // markup; avoids subtle divergence on data attributes.
   const svgMarkup = serializeSvg(svgElement);
   const dataUrl = await rasterizeSvg(svgMarkup, svgElement, format);
   vscode.postMessage({ type: 'export', format, data: dataUrl } satisfies ExportFormatMessage);
 }
 
 function serializeSvg(svg: SVGSVGElement): string {
+  // CSI: clone hygiene — work on a detached copy so we can rewrite structure
+  // without mutating the live DOM.
   const clone = svg.cloneNode(true) as SVGSVGElement;
   const clientRect = svg.getBoundingClientRect();
   const storedOriginX = parseNumericAttribute(svg, 'data-diagram-origin-x');
@@ -101,6 +112,8 @@ function serializeSvg(svg: SVGSVGElement): string {
 }
 
 function normalizeCloneStructure(svg: SVGSVGElement): void {
+  // CSI: purge renderer-only artifacts — exported markup should not leak layout
+  // bookkeeping attributes or extra wrappers.
   svg.removeAttribute('class');
   svg.removeAttribute('data-diagram-origin-x');
   svg.removeAttribute('data-diagram-origin-y');
@@ -155,6 +168,8 @@ function getContentBounds(svg: SVGSVGElement): DOMRect | SVGRect | null {
 }
 
 function updateStyleProperty(element: Element, property: string, value: string): void {
+  // CSI: style merge — sanitize inline styles so we can tweak a single property
+  // without clobbering unrelated CSS the renderer had already set.
   const current = element.getAttribute('style') ?? '';
   const entries = current
     .split(';')
@@ -199,6 +214,8 @@ function parseNumericAttribute(element: Element, attribute: string): number | nu
 }
 
 function inlineStyles(source: Element, target: Element): void {
+  // CSI: computed copy — bake runtime CSS into the clone so exported SVGs look
+  // identical when opened outside VS Code.
   const computedStyle = window.getComputedStyle(source);
   const cssText = Array.from(computedStyle)
     .map((property) => `${property}:${computedStyle.getPropertyValue(property)};`)
@@ -222,6 +239,8 @@ async function rasterizeSvg(
   originalSvg: SVGSVGElement,
   format: Exclude<SupportedFormat, 'svg'>
 ): Promise<string> {
+  // CSI: canvas prep — determine a sensible render size that honors layout
+  // metrics then draw onto a white background so transparent nodes remain legible.
   const viewBox = originalSvg.viewBox.baseVal;
   const fallbackWidth = parseFloat(originalSvg.getAttribute('width') ?? '') || originalSvg.clientWidth || 800;
   const fallbackHeight = parseFloat(originalSvg.getAttribute('height') ?? '') || originalSvg.clientHeight || 600;
@@ -262,6 +281,8 @@ async function rasterizeSvg(
 }
 
 function svgToDataUrl(markup: string): string {
+  // CSI: data URI — encode SVG markup to eliminate charset issues when loaded
+  // into an offscreen canvas element.
   const encoded = window.btoa(
     encodeURIComponent(markup).replace(/%([0-9A-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
   );

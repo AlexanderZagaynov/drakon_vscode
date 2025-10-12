@@ -1,3 +1,4 @@
+// CSI: duration node — pill shape with one rounded side to suggest time flow.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawDurationShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: semi-capsule — round left edge while keeping right edge straight.
   const radius = height / 2;
   const path = d3.path();
   path.moveTo(-width / 2 + radius, -height / 2);
@@ -23,6 +25,7 @@ function drawDurationShape(group: NodeSelection, width: number, height: number, 
 }
 
 export const durationSpec: NodeSpec = {
+  // CSI: moderate padding — align with timeline blocks.
   width: BASE_NODE_WIDTH,
   minHeight: BASE_NODE_MIN_HEIGHT * (14 / 17),
   lineHeight: BASE_LINE_HEIGHT,

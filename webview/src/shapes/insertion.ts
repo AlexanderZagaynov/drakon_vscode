@@ -1,3 +1,4 @@
+// CSI: insertion node — rounded rectangle with vertical guides implying slots.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
@@ -10,6 +11,7 @@ import {
 } from './constants.js';
 
 function drawInsertionShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: base shape — reuse generic rounded rectangle helper.
   drawRoundedRectangle(group, width, height, node);
   const offset = Math.min(width * 0.12, 18);
   const padding = Math.min(height * 0.12, 12);
@@ -20,6 +22,7 @@ function drawInsertionShape(group: NodeSelection, width: number, height: number,
   const rightX = width / 2 - offset;
 
   [leftX, rightX].forEach((x) => {
+    // CSI: guides — add thin interior lines suggesting insertion slots.
     group
       .append('line')
       .attr('class', 'node-inset-line')
@@ -31,6 +34,7 @@ function drawInsertionShape(group: NodeSelection, width: number, height: number,
 }
 
 export const insertionSpec: NodeSpec = {
+  // CSI: slight growth — allow extra padding so slot lines don’t crowd text.
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (20 / 17),
   lineHeight: BASE_LINE_HEIGHT,

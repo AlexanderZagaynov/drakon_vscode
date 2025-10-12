@@ -1,3 +1,4 @@
+// CSI: process node — tall rounded rectangle with header bands for substeps.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import { drawRoundedRectangle } from './common.js';
@@ -10,10 +11,12 @@ import {
 } from './constants.js';
 
 function drawProcessShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: base frame — reuse rounded rectangle helper.
   drawRoundedRectangle(group, width, height, node);
   const band = Math.min(height * 0.2, 48);
   const secondBand = band * 2;
   [band, secondBand].forEach((offset) => {
+    // CSI: divider bands — echo DRAKON reference stripes.
     group
       .append('line')
       .attr('class', 'node-divider')
@@ -25,6 +28,7 @@ function drawProcessShape(group: NodeSelection, width: number, height: number, n
 }
 
 export const processSpec: NodeSpec = {
+  // CSI: tall aspect — allow space for multiple substep descriptions.
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
   lineHeight: BASE_LINE_HEIGHT * (12 / 11),

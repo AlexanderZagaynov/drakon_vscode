@@ -1,3 +1,4 @@
+// CSI: for-each node — loop header with clipped corners hinting iteration.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawForEachShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: bevel corners — give subtle visual distinction from action nodes.
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   const bevel = Math.max(6, Math.min(halfWidth * 0.25, 14));
@@ -35,6 +37,7 @@ function drawForEachShape(group: NodeSelection, width: number, height: number, n
 }
 
 export const forEachSpec: NodeSpec = {
+  // CSI: lean height — loop headers stay compact above repeated blocks.
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (9 / 17),
   lineHeight: BASE_LINE_HEIGHT * (9 / 11),

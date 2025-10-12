@@ -1,3 +1,4 @@
+// CSI: timer node — hourglass silhouette highlighting long-running steps.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawTimerShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: hourglass path — pinch at the waist to match official DRAKON timer icon.
   const waist = Math.min(width * 0.32, 70);
   const path = d3.path();
   path.moveTo(-width / 2, -height / 2);
@@ -25,6 +27,7 @@ function drawTimerShape(group: NodeSelection, width: number, height: number, nod
 }
 
 export const timerSpec: NodeSpec = {
+  // CSI: tall + extra top padding — leave room for “Timer” label above the waist.
   width: BASE_NODE_WIDTH * (13 / 12),
   minHeight: BASE_NODE_MIN_HEIGHT * (26 / 17),
   lineHeight: BASE_LINE_HEIGHT * (12 / 11),

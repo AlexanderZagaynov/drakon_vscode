@@ -1,3 +1,4 @@
+// CSI: choice case node — trapezoid with tail indicating branch exit.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 function drawChoiceCaseShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: split body — rectangular top with triangular tail mirroring DRAKON branch glyph.
   const triangleHeight = Math.min(height * 0.35, 56);
   const bodyHeight = height - triangleHeight;
   const path = d3.path();
@@ -35,6 +37,7 @@ function drawChoiceCaseShape(group: NodeSelection, width: number, height: number
 }
 
 export const choiceCaseSpec: NodeSpec = {
+  // CSI: top baseline — branch label sits above divider for clarity.
   width: BASE_NODE_WIDTH,
   minHeight: BASE_NODE_MIN_HEIGHT,
   lineHeight: BASE_LINE_HEIGHT,

@@ -1,11 +1,10 @@
-// Pull in D3 selection type because we build SVG fragments directly.
+// CSI: edge renderer — handles connector routing and label placement for the
+// diagram preview.
 import type { Selection } from 'd3';
-// Diagram data structures and layout helpers live in the shared types/layout modules.
 import type { Diagram, DiagramEdge, DiagramNode, LayoutResult } from '../types.js';
 import { LAYOUT } from '../layout.js';
 
-// Bundle of geometry information we need when positioning edge labels.
-// Keeping it structured avoids returning several loosely-related numbers.
+// CSI: label geometry bundle — keeps midpoint offsets together for readability.
 interface EdgeLayoutResult {
   x: number;
   y: number;
@@ -14,23 +13,21 @@ interface EdgeLayoutResult {
   anchor: 'start' | 'middle' | 'end';
 }
 
-// Render every edge in the diagram.
-// Responsibility for routing and label layout lives here so the renderer can stay lean.
 export function drawEdges(
   container: Selection<SVGGElement, unknown, null, undefined>,
   diagram: Diagram,
   layout: LayoutResult,
   nodeById: Map<string, DiagramNode>
 ): void {
-  // Only keep edges where both endpoints have been positioned by the layout pass.
+  // CSI: cull — skip edges whose anchors the layout cannot resolve.
   const visibleEdges = diagram.edges.filter(
     (edge) => layout.positions.has(edge.fromBase ?? '') && layout.positions.has(edge.toBase ?? '')
   );
 
-  // Collect all edge visuals under a dedicated group so styling stays scoped.
+  // CSI: grouping — isolate edge visuals for scoped styling.
   const edgesGroup = container.append('g').attr('class', 'edges');
 
-  // Draw the actual connectors first.
+  // CSI: connectors — render paths before labels so markers and strokes paint behind text.
   edgesGroup
     .selectAll('path')
     .data(visibleEdges)
@@ -40,7 +37,7 @@ export function drawEdges(
     .attr('d', (d) => buildEdgePath(d, layout, nodeById))
     .attr('marker-end', 'url(#arrowhead)');
 
-  // Then render labels for edges that explicitly set one.
+  // CSI: labels — only render when the DSL provided text.
   edgesGroup
     .selectAll('text')
     .data(visibleEdges.filter((edge) => edge.label))
@@ -55,7 +52,7 @@ export function drawEdges(
     .text((d) => d.label);
 }
 
-// Generate the SVG path for an edge, mirroring the simple orthogonal routing used in the viewer.
+// CSI: path builder — replicate orthogonal routing rules from the main viewer.
 function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<string, DiagramNode>): string {
   const from = layout.positions.get(edge.fromBase ?? '') ?? { x: 0, y: 0 };
   const to = layout.positions.get(edge.toBase ?? '') ?? { x: 0, y: 0 };
@@ -76,7 +73,7 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
   }
 
-  // Direct branches (empty "No" lanes) first step sideways, then down, then back.
+  // CSI: direct branch — empty "No" lanes jog outward before rejoining.
   if (attrs.branch_direct) {
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
     const toNode = nodeById.get(edge.toBase ?? edge.to);
@@ -98,7 +95,7 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     return `M ${x1} ${y1} L ${outerX} ${y1} L ${outerX} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
   }
 
-  // Rejoin edges drop straight down to the main flow before turning.
+  // CSI: rejoin — slide vertically to hug the main lane before elbowing.
   if (attrs.rejoin) {
     const toNode = nodeById.get(edge.toBase ?? edge.to);
     const targetHeight = toNode?.geometry?.height ?? 0;
@@ -109,20 +106,20 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     return `M ${x1} ${y1} L ${x1} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
   }
 
-  // If the nodes already align horizontally or vertically, keep the edge straight.
+  // CSI: straight alignment — no elbows needed for collinear nodes.
   if (Math.abs(x1 - x2) < 0.01 || Math.abs(y1 - y2) < 0.01) {
     return `M ${x1} ${y1} L ${x2} ${y2}`;
   }
 
-  // Fallback: single elbow (classic DRAKON orthogonal connector).
+  // CSI: fallback — classic single elbow when no special routing applies.
   const elbowX = x2;
   const elbowY = y1;
   return `M ${x1} ${y1} L ${elbowX} ${elbowY} L ${x2} ${y2}`;
 }
 
-// Decide where the label should sit for a given edge style.
+// CSI: label layout — decide offsets per edge variant.
 function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<string, DiagramNode>): EdgeLayoutResult {
-  // Look up both endpoints so we can calculate label offsets relative to screen space.
+  // CSI: anchor lookup — derive coordinates for both endpoints to inform offsets.
   const from = layout.positions.get(edge.fromBase ?? '') ?? { x: 0, y: 0 };
   const to = layout.positions.get(edge.toBase ?? '') ?? { x: 0, y: 0 };
   const x1 = from.x;
@@ -131,7 +128,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
   const y2 = to.y;
   const attrs = (edge.attributes ?? {}) as Record<string, unknown>;
 
-  // Side branch with its own column: hang the label near the shoulder and push it outward.
+  // CSI: branch lane — hang the label near the shoulder, nudged toward the side lane.
   if (attrs.branch_lane) {
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
     const fromWidth = fromNode?.geometry?.width ?? 0;
@@ -146,7 +143,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
   }
 
   if (attrs.branch_main) {
-    // Default downward flow: tuck the label beneath the question on the left-hand side.
+  // CSI: branch main — tuck text below the question node.
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
     const fromHeight = fromNode?.geometry?.height ?? 0;
     const bottomY = y1 + fromHeight / 2;
@@ -161,7 +158,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
   }
 
   if (attrs.branch_direct) {
-    // Empty branch (No-block omitted): keep the label just beyond the question shoulder.
+  // CSI: branch direct — keep text just beyond the question shoulder.
     const fromNode = nodeById.get(edge.fromBase ?? edge.from);
     const fromWidth = fromNode?.geometry?.width ?? 0;
     const visibleStart = fromWidth / 2;
@@ -176,7 +173,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
     };
   }
 
-  // Straight segments simply take the midpoint to keep the label centered on the run.
+  // CSI: straight run — midpoint keeps label centered.
   if (Math.abs(x1 - x2) < 0.01 || Math.abs(y1 - y2) < 0.01) {
     return {
       x: (x1 + x2) / 2,
@@ -187,7 +184,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
     };
   }
 
-  // Rejoin edges sit under the elbow so the label does not overlap the downstream action.
+  // CSI: rejoin elbow — drop label under the elbow to dodge downstream nodes.
   if (attrs.rejoin) {
     return {
       x: (x1 + x2) / 2,
@@ -200,7 +197,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
 
   const horizontalLength = Math.abs(x2 - x1);
   const verticalLength = Math.abs(y2 - y1);
-  // Horizontal-dominant edges show the label above the run to match DRAKON defaults.
+  // CSI: horizontal dominant — bias label above the run to match DRAKON defaults.
   if (horizontalLength >= verticalLength) {
     return {
       x: (x1 + x2) / 2,
@@ -211,7 +208,7 @@ function edgeLabelLayout(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<
     };
   }
 
-  // Fallback: treat the final leg as vertical and hug the destination node.
+  // CSI: vertical leg fallback — hug the destination to stay readable.
   return {
     x: x2,
     y: (y1 + y2) / 2 - 12,

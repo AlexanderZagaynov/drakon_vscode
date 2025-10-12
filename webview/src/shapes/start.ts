@@ -1,3 +1,4 @@
+// CSI: start node — stadium shape marking entry into the algorithm.
 import type { NodeSpec } from '../types.js';
 import { drawStadium } from './common.js';
 import {
@@ -9,6 +10,8 @@ import {
 } from './constants.js';
 
 export const startSpec: NodeSpec = {
+  // CSI: proportions — slightly narrower/shorter than action nodes to keep the
+  // start marker visually distinct.
   width: BASE_NODE_WIDTH * (5 / 6),
   minHeight: BASE_NODE_MIN_HEIGHT * (10 / 17),
   lineHeight: BASE_LINE_HEIGHT * (10 / 11),

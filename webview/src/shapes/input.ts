@@ -1,3 +1,4 @@
+// CSI: input node — parallelogram slanted right per flowchart convention.
 import type { DiagramNode, NodeSpec } from '../types.js';
 import type { NodeSelection } from './common.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './constants.js';
 
 export function drawInputShape(group: NodeSelection, width: number, height: number, node: DiagramNode): void {
+  // CSI: rightward slant — signal data entering the process.
   const bevel = Math.min(width * 0.15, 40);
   const path = d3.path();
   path.moveTo(-width / 2 + bevel, -height / 2);
@@ -24,6 +26,7 @@ export function drawInputShape(group: NodeSelection, width: number, height: numb
 }
 
 export const inputSpec: NodeSpec = {
+  // CSI: generous padding — accommodate longer field descriptions.
   width: BASE_NODE_WIDTH * (7 / 6),
   minHeight: BASE_NODE_MIN_HEIGHT * (18 / 17),
   lineHeight: BASE_LINE_HEIGHT,
