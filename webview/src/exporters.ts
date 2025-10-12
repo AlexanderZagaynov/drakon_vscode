@@ -171,16 +171,19 @@ function updateStyleProperty(element: Element, property: string, value: string):
   // CSI: style merge — sanitize inline styles so we can tweak a single property
   // without clobbering unrelated CSS the renderer had already set.
   const current = element.getAttribute('style') ?? '';
-  const entries = current
+  const parsed = current
     .split(';')
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => entry.split(':'))
     .filter((parts): parts is [string, string] => parts.length >= 2)
-    .reduce<Map<string, string>>((map, [prop, ...rest]) => {
-      map.set(prop.trim(), rest.join(':').trim());
-      return map;
-    }, new Map());
+    .map<[string, string]>(([prop, ...rest]) => [prop.trim(), rest.join(':').trim()]);
+
+  const entries = d3.rollup(
+    parsed,
+    (values) => values[values.length - 1]?.[1] ?? '',
+    ([prop]) => prop
+  );
 
   if (value) {
     entries.set(property, value);

@@ -107,8 +107,8 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
   const columnNodes = new Map<number, DiagramNode[]>();
   const laneColumn = new Map<string, number>();
   const questionBranchInfo = new Map<string, QuestionBranchInfo>();
-  const choiceCaseInfo = new Map<string, ChoiceCaseRecord[]>();
-  const choiceNextRaw = new Map<string, string>();
+  const choiceCaseRecords: Array<ChoiceCaseRecord & { choiceId: string }> = [];
+  const choiceNextRecords: Array<{ choiceId: string; nextRaw: string }> = [];
   let nextColumnIndex = 0;
 
   const ensureColumn = (column: number) => {
@@ -381,7 +381,7 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
   ): void {
     const nextAttr = typeof attributes.next === 'string' ? attributes.next.trim() : '';
     if (nextAttr) {
-      choiceNextRaw.set(node.id, nextAttr);
+      choiceNextRecords.push({ choiceId: node.id, nextRaw: nextAttr });
     }
 
     const cases: ChoiceCaseRecord[] = [];
@@ -439,7 +439,9 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
     });
 
     if (cases.length) {
-      choiceCaseInfo.set(node.id, cases);
+      cases.forEach((record) => {
+        choiceCaseRecords.push({ choiceId: node.id, ...record });
+      });
     }
   }
 
@@ -843,12 +845,14 @@ export function buildDiagram(statements: Statement[], errors: string[]): Diagram
   });
 
   const choiceNextResolved = new Map<string, { full: string; base: string }>();
-  choiceNextRaw.forEach((raw, choiceId) => {
-    const resolved = resolveReference(raw, `Choice "${choiceId}" next`);
+  choiceNextRecords.forEach(({ choiceId, nextRaw }) => {
+    const resolved = resolveReference(nextRaw, `Choice "${choiceId}" next`);
     if (resolved) {
       choiceNextResolved.set(choiceId, resolved);
     }
   });
+
+  const choiceCaseInfo = d3.group(choiceCaseRecords, (record) => record.choiceId);
 
   choiceCaseInfo.forEach((records) => {
     records.forEach((record) => {

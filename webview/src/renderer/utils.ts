@@ -27,40 +27,42 @@ export function computeDiagramContentBounds(diagram: Diagram, layout: LayoutResu
     return null;
   }
 
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-
-  diagram.nodes.forEach((node) => {
+  const bounds = diagram.nodes.reduce<{ left: number; right: number; top: number; bottom: number }[]>((acc, node) => {
     const position = layout.positions.get(node.id);
     const geometry = node.geometry;
     if (!position || !geometry) {
-      return;
+      return acc;
     }
     const halfWidth = (geometry.width ?? 0) / 2;
     const halfHeight = (geometry.height ?? 0) / 2;
-    const left = position.x - halfWidth;
-    const right = position.x + halfWidth;
-    const top = position.y - halfHeight;
-    const bottom = position.y + halfHeight;
+    acc.push({
+      left: position.x - halfWidth,
+      right: position.x + halfWidth,
+      top: position.y - halfHeight,
+      bottom: position.y + halfHeight
+    });
+    return acc;
+  }, []);
 
-    minX = Math.min(minX, left);
-    minY = Math.min(minY, top);
-    maxX = Math.max(maxX, right);
-    maxY = Math.max(maxY, bottom);
-  });
+  if (!bounds.length) {
+    return null;
+  }
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+  const left = d3.min(bounds, (d) => d.left);
+  const right = d3.max(bounds, (d) => d.right);
+  const top = d3.min(bounds, (d) => d.top);
+  const bottom = d3.max(bounds, (d) => d.bottom);
+
+  if (left === undefined || top === undefined || right === undefined || bottom === undefined) {
     return null;
   }
 
   // CSI: extend to layout bounds — make sure exports include any grid/labels
   // that extend to the canvas edges even if nodes don’t.
-  minX = Math.min(minX, 0);
-  minY = Math.min(minY, 0);
-  maxX = Math.max(maxX, layout.width);
-  maxY = Math.max(maxY, layout.height);
+  const minX = Math.min(left, 0);
+  const minY = Math.min(top, 0);
+  const maxX = Math.max(right, layout.width);
+  const maxY = Math.max(bottom, layout.height);
 
   return { minX, minY, maxX, maxY };
 }

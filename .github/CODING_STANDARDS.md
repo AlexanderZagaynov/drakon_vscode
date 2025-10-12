@@ -185,3 +185,4 @@ All code must follow CSI standards. Pull requests will be reviewed for:
 - Comments explaining WHY, not just WHAT
 - Conversational, language-agnostic tone
 - Proper placement and formatting
+- Preference for D3 helpers over bespoke utilities when working inside the webview renderer

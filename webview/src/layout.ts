@@ -59,25 +59,26 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   // CSI: column bucketing — group nodes by declared column index so lanes align
   // vertically.
-  const columnEntries = new Map<number, { node: DiagramNode; order: number }[]>();
-  const inboundCount = new Map<string, number>();
-  diagram.edges.forEach((edge) => {
-    const toId = edge.toBase ?? baseAnchor(edge.to);
-    inboundCount.set(toId, (inboundCount.get(toId) ?? 0) + 1);
-  });
+  const nodesWithMetadata = diagram.nodes.map((node, index) => ({
+    node,
+    order: index,
+    column: Number.isFinite(node.column) ? (node.column as number) : 0
+  }));
+
+  const columnEntries = d3.group(nodesWithMetadata, (entry) => entry.column);
+
+  const inboundCount = d3.rollup(
+    diagram.edges,
+    (edges) => edges.length,
+    (edge) => edge.toBase ?? baseAnchor(edge.to)
+  );
 
   // CSI: synthetic edges — link column siblings lacking inbound edges so depth
   // sorting treats them as sequential.
   const syntheticEdges: DiagramEdge[] = [];
   const lastInColumn = new Map<number, string>();
 
-  diagram.nodes.forEach((node, index) => {
-    const column = Number.isFinite(node.column) ? (node.column as number) : 0;
-    if (!columnEntries.has(column)) {
-      columnEntries.set(column, []);
-    }
-    columnEntries.get(column)?.push({ node, order: index });
-
+  nodesWithMetadata.forEach(({ node, column }) => {
     const previousId = lastInColumn.get(column);
     if (previousId && (inboundCount.get(node.id) ?? 0) === 0) {
       syntheticEdges.push({
@@ -107,7 +108,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
     columnEntries.set(0, []);
   }
 
-  const sortedColumns = Array.from(columnEntries.keys()).sort((a, b) => a - b);
+  const sortedColumns = Array.from(columnEntries.keys()).sort(d3.ascending);
   const columnLayouts = new Map<number, { x: number; width: number }>();
   let currentX = laneLeft;
 
@@ -122,7 +123,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
       }
       return a.order - b.order;
     });
-    const maxNodeWidth = entries.reduce((acc, entry) => Math.max(acc, entry.node.geometry?.width ?? 220), 220);
+    const maxNodeWidth = d3.max(entries, (entry) => entry.node.geometry?.width ?? 220) ?? 220;
     const columnWidth = Math.max(maxNodeWidth + LAYOUT.lanePadding, 260);
     const centerX = currentX + columnWidth / 2;
     columnLayouts.set(column, { x: centerX, width: columnWidth });
@@ -131,16 +132,9 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   // CSI: vertical grouping — determine row centers using depth breakdown.
   const defaultHeight = 170;
-  const levelNodes = new Map<number, DiagramNode[]>();
-  diagram.nodes.forEach((node) => {
-    const depth = depths.get(node.id) ?? 0;
-    if (!levelNodes.has(depth)) {
-      levelNodes.set(depth, []);
-    }
-    levelNodes.get(depth)?.push(node);
-  });
+  const levelNodes = d3.group(diagram.nodes, (node) => depths.get(node.id) ?? 0);
 
-  const sortedLevels = Array.from(levelNodes.keys()).sort((a, b) => a - b);
+  const sortedLevels = Array.from(levelNodes.keys()).sort(d3.ascending);
   const levelCenters = new Map<number, number>();
   let cursorY = laneTop;
   if (!sortedLevels.length) {
@@ -151,10 +145,7 @@ export function buildLayout(diagram: Diagram): LayoutResult {
       // CSI: row sizing — choose the tallest node height per level to space rows
       // while respecting lane spacing between groups.
       const nodesAtLevel = levelNodes.get(level) ?? [];
-      const maxHeight = nodesAtLevel.reduce(
-        (acc, node) => Math.max(acc, node.geometry?.height ?? defaultHeight),
-        defaultHeight
-      );
+      const maxHeight = d3.max(nodesAtLevel, (node) => node.geometry?.height ?? defaultHeight) ?? defaultHeight;
       const centerY = cursorY + maxHeight / 2;
       levelCenters.set(level, centerY);
       cursorY += maxHeight;
@@ -166,31 +157,30 @@ export function buildLayout(diagram: Diagram): LayoutResult {
 
   const fallbackCenter = levelCenters.get(sortedLevels[0] ?? 0) ?? laneTop + defaultHeight / 2;
 
-  const positions = new Map<string, { x: number; y: number }>();
-  let globalTop = Number.POSITIVE_INFINITY;
-  let globalBottom = laneTop;
-
-  sortedColumns.forEach((column) => {
+  const positionedNodes = sortedColumns.flatMap((column) => {
     const entries = columnEntries.get(column) ?? [];
     const columnX = columnLayouts.get(column)?.x ?? laneLeft;
-    entries.forEach(({ node }) => {
-      // CSI: node placement — map each node id to its final coordinates and
-      // track bounding box for diagram size.
+    return entries.map(({ node }) => {
       const depth = depths.get(node.id) ?? 0;
       const centerY = levelCenters.get(depth) ?? fallbackCenter;
       const height = node.geometry?.height ?? defaultHeight;
-      positions.set(node.id, { x: columnX, y: centerY });
-      const top = centerY - height / 2;
-      const bottom = centerY + height / 2;
-      globalTop = Math.min(globalTop, top);
-      globalBottom = Math.max(globalBottom, bottom);
+      return { id: node.id, x: columnX, y: centerY, height };
     });
   });
 
-  if (!Number.isFinite(globalTop)) {
-    globalTop = laneTop;
-    globalBottom = laneTop + defaultHeight;
-  }
+  const positions = new Map(positionedNodes.map(({ id, x, y }) => [id, { x, y }]));
+
+  const [globalTop, globalBottom] = (() => {
+    if (!positionedNodes.length) {
+      return [laneTop, laneTop + defaultHeight];
+    }
+    const extents = d3.extent(
+      positionedNodes.flatMap(({ y, height }) => [y - height / 2, y + height / 2])
+    );
+    const top = extents[0] ?? laneTop;
+    const bottom = extents[1] ?? laneTop + defaultHeight;
+    return [top, bottom];
+  })();
 
   const totalWidth = Math.max(currentX - laneGap + laneLeft, 640);
   const totalHeight = Math.max(globalBottom + LAYOUT.laneBottomMargin, 600);

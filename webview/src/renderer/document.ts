@@ -53,13 +53,19 @@ function drawDiagram(
     // CSI: empty render — explain why nothing is shown (syntax error vs. blank
     // diagram) instead of leaving a vacant canvas.
     state.currentDiagram = null;
-    const message = document.createElement('p');
-    message.className = 'empty-state';
-    message.textContent =
-      errors.length && !diagram
-        ? 'Fix syntax errors in the HCL diagram to see a preview.'
-        : 'Define blocks using the HCL-based DRAKON DSL.';
-    diagramEl.appendChild(message);
+    const emptyState = d3
+      .select(diagramEl)
+      .append('p')
+      .attr('class', 'empty-state')
+      .text(
+        errors.length && !diagram
+          ? 'Fix syntax errors in the HCL diagram to see a preview.'
+          : 'Define blocks using the HCL-based DRAKON DSL.'
+      );
+    emptyState
+      .transition()
+      .duration(150)
+      .style('opacity', 1);
     return;
   }
   // CSI: layout pipeline — normalize nodes, compute spatial layout, and cache
@@ -83,17 +89,15 @@ function drawDiagram(
   const contentBounds = computeDiagramContentBounds(diagram, layout);
   const layoutCenterX = layout.width / 2;
   const layoutCenterY = layout.height / 2;
-  const originX = contentBounds ? (contentBounds.minX + contentBounds.maxX) / 2 : layoutCenterX;
+  const originX = contentBounds
+    ? d3.mean([contentBounds.minX, contentBounds.maxX]) ?? layoutCenterX
+    : layoutCenterX;
 
   const originSource = contentBounds ? 'content' : 'layout';
-  let columnsMin = Number.POSITIVE_INFINITY;
-  let columnsMax = Number.NEGATIVE_INFINITY;
-  layout.columns.forEach(({ x, width }) => {
-    const left = x - width / 2;
-    const right = x + width / 2;
-    columnsMin = Math.min(columnsMin, left);
-    columnsMax = Math.max(columnsMax, right);
-  });
+  const columnEntries: Array<{ x: number; width: number }> = Array.from(layout.columns.values());
+  const [columnsMin, columnsMax] = d3.extent(
+    columnEntries.flatMap((column) => [column.x - column.width / 2, column.x + column.width / 2])
+  );
 
   // CSI: export metadata — store layout stats as data attributes so exporters
   // and tests can reconstruct viewport math without recomputing layout.
@@ -105,8 +109,8 @@ function drawDiagram(
     .attr('data-layout-center-x', String(round(layoutCenterX)))
     .attr('data-layout-center-y', String(round(layoutCenterY)))
     .attr('data-diagram-origin-source', originSource)
-    .attr('data-layout-columns-min-x', Number.isFinite(columnsMin) ? String(round(columnsMin)) : '')
-    .attr('data-layout-columns-max-x', Number.isFinite(columnsMax) ? String(round(columnsMax)) : '');
+    .attr('data-layout-columns-min-x', columnsMin !== undefined ? String(round(columnsMin)) : '')
+    .attr('data-layout-columns-max-x', columnsMax !== undefined ? String(round(columnsMax)) : '');
 
   // CSI: marker setup — define arrowheads once so edge rendering can reference
   // them by id.
@@ -128,8 +132,7 @@ function drawDiagram(
   contentGroup.append('g').attr('class', 'grid');
 
   // CSI: node index — map node ids for quick edge lookups.
-  const nodeById = new Map<string, Diagram['nodes'][number]>();
-  diagram.nodes.forEach((node) => nodeById.set(node.id, node));
+  const nodeById = d3.index(diagram.nodes, (node) => node.id);
 
   drawEdges(contentGroup, diagram, layout, nodeById);
 
@@ -137,18 +140,24 @@ function drawDiagram(
   // hierarchy.
   const nodesGroup = contentGroup.append('g').attr('class', 'nodes');
 
-  const nodeEnter = nodesGroup
-    .selectAll('g')
-    .data(diagram.nodes)
-    .enter()
-    .append('g')
+  const nodeSelection = nodesGroup
+    .selectAll<SVGGElement, Diagram['nodes'][number]>('g.node')
+    .data(diagram.nodes, (d) => d.id)
+    .join(
+      (enter) =>
+        enter
+          .append('g')
+          .attr('class', (d) => `node ${d.type}`),
+      (update) => update,
+      (exit) => exit.remove()
+    )
     .attr('class', (d) => `node ${d.type}`)
     .attr('transform', (d) => {
       const position = layout.positions.get(d.id);
       return `translate(${position?.x ?? 0}, ${position?.y ?? 0})`;
     });
 
-  nodeEnter.each(function (node) {
+  nodeSelection.each(function (node) {
     drawNode(d3.select(this), node);
   });
 
@@ -190,13 +199,31 @@ function drawDiagram(
         return;
       }
       event.preventDefault();
+      const svgNode = svg.node();
+      if (!svgNode) {
+        return;
+      }
+      const [pointerX, pointerY] = d3.pointer(event, svgNode);
+      const layoutBounds = state.currentLayout;
+      if (layoutBounds) {
+        if (pointerX < -layoutBounds.width * 0.1 || pointerX > layoutBounds.width * 1.1) {
+          return;
+        }
+        if (pointerY < -layoutBounds.height * 0.1 || pointerY > layoutBounds.height * 1.1) {
+          return;
+        }
+      }
       const dx = -event.deltaX;
       const dy = -event.deltaY;
       if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
         return;
       }
       svg.interrupt();
-      svg.call(state.zoomBehavior.translateBy, dx, dy);
+      const zoomTransform = d3.zoomTransform(svgNode);
+      const scale = zoomTransform.k || 1;
+      const normalizedDx = dx / scale;
+      const normalizedDy = dy / scale;
+      svg.call(state.zoomBehavior.translateBy, normalizedDx, normalizedDy);
     });
 
   state.currentSvg = svg;

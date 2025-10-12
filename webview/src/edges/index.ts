@@ -13,6 +13,11 @@ interface EdgeLayoutResult {
   anchor: 'start' | 'middle' | 'end';
 }
 
+const orthogonalLine = d3
+  .line<{ x: number; y: number }>()
+  .x((point) => point.x)
+  .y((point) => point.y);
+
 export function drawEdges(
   container: Selection<SVGGElement, unknown, null, undefined>,
   diagram: Diagram,
@@ -29,27 +34,37 @@ export function drawEdges(
 
   // CSI: connectors — render paths before labels so markers and strokes paint behind text.
   edgesGroup
-    .selectAll('path')
-    .data(visibleEdges)
-    .enter()
-    .append('path')
+    .selectAll<SVGPathElement, DiagramEdge>('path')
+    .data(visibleEdges, (edge) => edge.handle)
+    .join('path')
     .attr('class', (d) => `edge ${d.kind ?? 'main'}`)
-    .attr('d', (d) => buildEdgePath(d, layout, nodeById))
-    .attr('marker-end', 'url(#arrowhead)');
+    .attr('marker-end', 'url(#arrowhead)')
+    .attr('d', (d) => buildEdgePath(d, layout, nodeById));
 
-  // CSI: labels — only render when the DSL provided text.
-  edgesGroup
-    .selectAll('text')
-    .data(visibleEdges.filter((edge) => edge.label))
-    .enter()
-    .append('text')
+  const labelSelection = edgesGroup
+    .selectAll<SVGTextElement, DiagramEdge>('text')
+    .data(
+      visibleEdges.filter((edge) => edge.label),
+      (edge) => `${edge.handle}|${edge.label}`
+    )
+    .join(
+      (enter) => enter.append('text').attr('class', 'edge-label'),
+      (update) => update,
+      (exit) => exit.remove()
+    )
     .attr('class', 'edge-label')
-    .attr('x', (d) => edgeLabelLayout(d, layout, nodeById).x)
-    .attr('y', (d) => edgeLabelLayout(d, layout, nodeById).y)
-    .attr('dx', (d) => edgeLabelLayout(d, layout, nodeById).dx)
-    .attr('dy', (d) => edgeLabelLayout(d, layout, nodeById).dy)
-    .attr('text-anchor', (d) => edgeLabelLayout(d, layout, nodeById).anchor)
-    .text((d) => d.label);
+    .text((d) => d.label ?? '');
+
+  labelSelection.each(function (edge) {
+    const placement = edgeLabelLayout(edge, layout, nodeById);
+    d3
+      .select(this as SVGTextElement)
+      .attr('x', placement.x)
+      .attr('y', placement.y)
+      .attr('dx', placement.dx)
+      .attr('dy', placement.dy)
+      .attr('text-anchor', placement.anchor);
+  });
 }
 
 // CSI: path builder — replicate orthogonal routing rules from the main viewer.
@@ -70,7 +85,12 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     const baseY = y1 + fromHeight / 2;
     const targetTop = y2 - targetHeight / 2;
     const midY = (baseY + targetTop) / 2;
-    return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+    return orthogonalLine([
+      { x: x1, y: y1 },
+      { x: x1, y: midY },
+      { x: x2, y: midY },
+      { x: x2, y: y2 }
+    ]) ?? '';
   }
 
   // CSI: direct branch — empty "No" lanes jog outward before rejoining.
@@ -86,13 +106,25 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     if (fromNode && (fromNode.type === 'choice_case' || fromNode.type === 'choice_else')) {
       const fromHeight = fromNode.geometry?.height ?? 0;
       const baseY = y1 + fromHeight / 2;
-      return `M ${x1} ${y1} L ${x1} ${baseY} L ${x1} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
+      return orthogonalLine([
+        { x: x1, y: y1 },
+        { x: x1, y: baseY },
+        { x: x1, y: joinY },
+        { x: x2, y: joinY },
+        { x: x2, y: y2 }
+      ]) ?? '';
     }
 
     const fromWidth = fromNode?.geometry?.width ?? 0;
     const horizontalOffset = fromWidth / 2 + LAYOUT.laneGap / 2;
     const outerX = x1 + horizontalOffset;
-    return `M ${x1} ${y1} L ${outerX} ${y1} L ${outerX} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
+    return orthogonalLine([
+      { x: x1, y: y1 },
+      { x: outerX, y: y1 },
+      { x: outerX, y: joinY },
+      { x: x2, y: joinY },
+      { x: x2, y: y2 }
+    ]) ?? '';
   }
 
   // CSI: rejoin — slide vertically to hug the main lane before elbowing.
@@ -103,18 +135,28 @@ function buildEdgePath(edge: DiagramEdge, layout: LayoutResult, nodeById: Map<st
     const clearance = Math.max(40, targetHeight / 3);
     const joinCandidate = Math.min(targetTop - clearance, y2 - clearance);
     const joinY = Math.min(Math.max(joinCandidate, y1 + clearance / 2), y2 - 8);
-    return `M ${x1} ${y1} L ${x1} ${joinY} L ${x2} ${joinY} L ${x2} ${y2}`;
+    return orthogonalLine([
+      { x: x1, y: y1 },
+      { x: x1, y: joinY },
+      { x: x2, y: joinY },
+      { x: x2, y: y2 }
+    ]) ?? '';
   }
 
   // CSI: straight alignment — no elbows needed for collinear nodes.
   if (Math.abs(x1 - x2) < 0.01 || Math.abs(y1 - y2) < 0.01) {
-    return `M ${x1} ${y1} L ${x2} ${y2}`;
+    return orthogonalLine([
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ]) ?? '';
   }
 
   // CSI: fallback — classic single elbow when no special routing applies.
-  const elbowX = x2;
-  const elbowY = y1;
-  return `M ${x1} ${y1} L ${elbowX} ${elbowY} L ${x2} ${y2}`;
+  return orthogonalLine([
+    { x: x1, y: y1 },
+    { x: x2, y: y1 },
+    { x: x2, y: y2 }
+  ]) ?? '';
 }
 
 // CSI: label layout — decide offsets per edge variant.

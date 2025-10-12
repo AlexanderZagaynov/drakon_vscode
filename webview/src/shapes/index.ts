@@ -67,6 +67,7 @@ export function getNodeSpec(type: string): NodeSpec {
 export function drawNode(group: Selection<SVGGElement, unknown, null, undefined>, node: DiagramNode): void {
   // CSI: geometry contract — layout attaches `geometry` before render; treat it
   // as required to keep drawing math predictable.
+  group.selectAll('*').remove();
   const geometry = node.geometry as NodeGeometry;
   const {
     width,

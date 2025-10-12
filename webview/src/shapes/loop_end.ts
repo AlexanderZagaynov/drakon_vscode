@@ -20,20 +20,19 @@ function drawLoopEndShape(group: NodeSelection, width: number, height: number, n
   const leftX = -halfWidth;
   const rightX = halfWidth;
 
-  const pathData = [
-    `M ${leftX} ${topY}`,
-    `L ${rightX} ${topY}`,
-    `L ${rightX} ${bottomY - bevel}`,
-    `L ${rightX - bevel} ${bottomY}`,
-    `L ${leftX + bevel} ${bottomY}`,
-    `L ${leftX} ${bottomY - bevel}`,
-    'Z'
-  ].join(' ');
+  const path = d3.path();
+  path.moveTo(leftX, topY);
+  path.lineTo(rightX, topY);
+  path.lineTo(rightX, bottomY - bevel);
+  path.lineTo(rightX - bevel, bottomY);
+  path.lineTo(leftX + bevel, bottomY);
+  path.lineTo(leftX, bottomY - bevel);
+  path.closePath();
 
   group
     .append('path')
     .attr('class', `node-shape ${node.type}`)
-    .attr('d', pathData);
+    .attr('d', path.toString());
 }
 
 export const loopEndSpec: NodeSpec = {
